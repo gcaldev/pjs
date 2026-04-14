@@ -1,4 +1,4 @@
-from .Token import Token, TokenLiteralType 
+from Token import Token, TokenLiteralType 
 
 class Expressions(object):
     pass

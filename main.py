@@ -1,5 +1,5 @@
 from Scanner import Scanner
-from .Parser import Parser
+from Parser import Parser
 
 def main():
     source = input("Enter source code: ")
