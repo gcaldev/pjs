@@ -54,6 +54,7 @@ class TokenType(Enum):
     WHILE = auto()
     CONST = auto()
     UNDEFINED = auto()
+    NAN = auto()
 
     # Fin de archivo
     EOF = auto()
@@ -101,6 +102,7 @@ TokenKeywords = {
     "let": TokenType.LET,
     "while": TokenType.WHILE,
     "undefined": TokenType.UNDEFINED,
+    "NaN": TokenType.NAN,
 }
 
 # Tokens que se pueden identificar con un solo caracter

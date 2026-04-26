@@ -4,6 +4,7 @@ from typing import Optional
 class Env(object):
     def __init__(self, *, enclosing: Optional["Env"] = None):
         self.values: dict[str, object] = {}
+        self.consts: set[str] = set()
         # El entorno global es el único que no tiene enclosing
         self.enclosing: Optional["Env"] = enclosing
 
@@ -28,11 +29,12 @@ class Env(object):
             env = env.enclosing
         return env
 
-    def define(self, name: str, value: object):
-        # No estamos chequeando si la variable ya esta definida.
-        # Lox nos permite hacer var x = 1; var x = 2;
-        # mientras que otros lenguajes lo consideran un error
+    def define(self, name: str, value: object, is_const: bool = False):
+        if name in self.consts:
+            raise RuntimeError(f"Cannot redeclare constant variable '{name}'")
         self.values[name] = value
+        if is_const:
+            self.consts.add(name)
 
     def get(self, name: str, distance: int | None = None) -> object:
         scope = self
@@ -58,6 +60,8 @@ class Env(object):
             scope = self.ancestor(distance)
 
         if name in scope.values:
+            if name in scope.consts:
+                raise RuntimeError(f"Cannot reassign constant variable '{name}'")
             scope.values[name] = value
             return value
 

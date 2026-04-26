@@ -5,6 +5,7 @@ if TYPE_CHECKING:
 
 from Stmt import FunDecl
 from Env import Env
+from JSValues import UNDEFINED
 
 
 class ReturnValue(Exception):
@@ -39,8 +40,7 @@ class Function(object):
         except ReturnValue as returnvalue:
             return returnvalue.value
 
-        # Si no hubo return, devolvemos nil
-        return None
+        return UNDEFINED
 
     def __repr__(self) -> str:
         params = ", ".join(param.lexeme for param in self.declaration.parameters)

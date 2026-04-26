@@ -1,5 +1,5 @@
 from Expressions import Expressions as Expr
-from Token import Token
+from Token import Token, TokenType
 
 
 class Stmt(object):
@@ -26,12 +26,22 @@ class BlockStmt(Stmt):
 
 # varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
 class VarDecl(Stmt):
-    def __init__(self, name: Token, initializer: Expr | None):
+    def __init__(self, name: Token, initializer: Expr | None, is_const: bool = False):
         self.name = name
         self.initializer = initializer
+        self.is_const = is_const
+
+    def get_keyword(self) -> str:
+        match self.name.token_type:
+            case TokenType.VAR:
+                return "VAR"
+            case TokenType.LET:
+                return "LET"
+            case TokenType.CONST:
+                return "CONST"
 
     def __repr__(self) -> str:
-        return f"VAR {self.name.lexeme} = {self.initializer}"
+        return f"{self.get_keyword()} {self.name.lexeme} = {self.initializer}"
 
 
 # funDecl        → "fun" IDENTIFIER "(" parameters? ")" blockStmt ;

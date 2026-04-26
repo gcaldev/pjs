@@ -22,6 +22,7 @@ from Expressions import Variable, Assignment, Logic, Call, Ternary, Postfix
 from Function import Function, ReturnValue
 from Token import TokenType
 from Env import Env
+from JSValues import UNDEFINED, js_repr
 
 
 class Interpreter(object):
@@ -29,16 +30,18 @@ class Interpreter(object):
         self.globals = Env()
         self.env = self.globals
 
-        # TODO: Cuando implementemos resolvedor de scopes, vamos a tener que poblar este diccionario con las distancias resueltas
-        self.local_scope_depths: dict[object, int] = {}
+        self.local_scope_depths: dict[Variable | Assignment, int] = {}
 
     # Interpretar es ejecutar la lista de statements que tenemos
-    def interpret(self, statements: list[Stmt]):
+    def interpret(self, statements: list[Stmt], as_js_repr: bool = False):
         lastvalue_produced = None
         for statement in statements:
             # Se guarda el ultimo valor producido por un statement
             lastvalue_produced = self.execute(statement)
-        # Se retorna el ultimo valor producido
+
+        if as_js_repr:
+            return js_repr(lastvalue_produced)
+
         return lastvalue_produced
 
     # Guarda la profundidad en la que buscar una variable o asignación
@@ -60,11 +63,12 @@ class Interpreter(object):
 
     @execute.register
     def _(self, statement: VarDecl):
-        # Ejecutar una declaración de una variable es solamente agregar el binding al entorno
         if statement.initializer is not None:
-            self.env.define(statement.name.lexeme, self.evaluate(statement.initializer))
+            value = self.evaluate(statement.initializer)
         else:
-            self.env.define(statement.name.lexeme, statement.initializer)
+            value = UNDEFINED
+        self.env.define(statement.name.lexeme, value, is_const=statement.is_const)
+        return UNDEFINED
 
     @execute.register
     def _(self, statement: FunDecl):
@@ -73,10 +77,11 @@ class Interpreter(object):
         fun = Function(statement, self.env)
         # 2. Atarla a su nombre
         self.env.define(statement.name.lexeme, fun)
+        return UNDEFINED
 
     @execute.register
     def _(self, statement: ReturnStmt):
-        returnvalue = None
+        returnvalue = UNDEFINED
         if statement.value is not None:
             # Si hay un valor de retorno, lo evaluamos y lo lanzamos cual error
             returnvalue = self.evaluate(statement.value)
@@ -142,116 +147,150 @@ class Interpreter(object):
 
         match expression.operator.token_type:
             case TokenType.MINUS:
-                # El operador - solo funciona sobre números
-                if not self.is_number(right):
-                    raise RuntimeError(
-                        f"Operand of - must be a number, got: `-{right}`"
-                    )
-                return -right
+                rnum = self.to_number(right)
+                return -rnum
             case TokenType.BANG:
-                # Negar un valor lo castea implicitamente a un booleano
                 return not self.is_truthy(right)
             case _:
                 raise RuntimeError(f"Unknown unary operator: `{expression.operator}`")
 
     @evaluate.register
     def _(self, expression: Binary):
-        # En expresiones binarias, Lox evalua primero el operando
-        # izquierdo, luego el derecho, y después aplicamos el operador
-
-        # Lo mismo hacemos con el chequeo de tipos.
-        # En vez de evaluar el primer operador y chequear su tipo,
-        # y levantar un error antes de hacerlo con el segundo,
-        # evaluamos y chequeamos todo y luego levantamos el error.
         left = self.evaluate(expression.left)
         right = self.evaluate(expression.right)
 
-        # Es acá donde más ojo hay que poner en qué utilizamos del lenguaje de la implementación,
-        # y sobre qué agregamos lógica propia.
-        # Tenemos que asegurarnos de que lo que hagamos en Python sea parte de la semántica de Lox,
-        # para mantenernos consistentes frente al diseño del lenguaje.
-        # Si no, el riesgo es que una implementación de Lox en otro lenguaje de resultados distintos
-        # frente a código de Lox.
-
         match expression.operator.token_type:
-            # Por ejemplo, Lox no hace coerciones de tipos implicitas en la igualdad,
-            # y Python tampoco. Es decir, "1" == 1 es False en ambos lenguajes.
-            # Si este intérprete estuviese implementado en Ruby o JavaScript,
-            # habría que estar atento a no cometer el error de utilizar el operador de igualdad
-            # de ese lenguaje para el de Lox.
-
-            # Un ejemplo donde esto no sucede. Si bien Python si nos permite comparar cadenas
-            # con todos los operadores, Lox solo nos permite hacerlo con los de == y !=.
-            # Es por eso que tenemos que levantar un error al intentar llamar < frente a cadenas,
-            # mientras que eso en Python no sucederia.
             case TokenType.PLUS:
-                # El operador + en Lox esta sobrecargado al igual que en Python.
-                # Se permite sumar tanto cadenas como números.
-                # Y, al igual que en Python, no hay conversión implicita entre los operandos.
-                # Es decir, en Lox, "a" + 1 es un error. (en JavaScript, por ejemplo, sería "a1").
-                if not self.is_number(left, right) and not self.is_string(left, right):
-                    raise RuntimeError(
-                        f"Operands of + must be either numbers or strings, got: `{left} + {right}`"
-                    )
-                return left + right
+                if self.is_string(left) or self.is_string(right):
+                    return js_repr(left) + js_repr(right)
+                lnum = self.to_number(left)
+                rnum = self.to_number(right)
+                return lnum + rnum
             case TokenType.MINUS:
-                if not self.is_number(left, right):
-                    raise RuntimeError(
-                        f"Operands of - must be numbers, got: `{left} - {right}`"
-                    )
-                return left - right
+                lnum = self.to_number(left)
+                rnum = self.to_number(right)
+                return lnum - rnum
             case TokenType.STAR:
-                if not self.is_number(left, right):
-                    raise RuntimeError(
-                        f"Operands of * must be numbers, got: `{left} * {right}`"
-                    )
-                return left * right
+                lnum = self.to_number(left)
+                rnum = self.to_number(right)
+                return lnum * rnum
             case TokenType.SLASH:
-                if not self.is_number(left, right):
-                    raise RuntimeError(
-                        f"Operands of / must be numbers, got: `{left} / {right}`"
-                    )
-                elif right == 0:
-                    raise RuntimeError(f"Division by {right} is not allowed")
-                return left / right
+                lnum = self.to_number(left)
+                rnum = self.to_number(right)
+                if self.is_nan(rnum):
+                    return float("nan")
+                if self.is_nan(lnum):
+                    return float("nan")
+                if rnum == 0:
+                    if lnum == 0:
+                        return float("nan")
+                    return float("inf") if lnum > 0 else float("-inf")
+                return lnum / rnum
             case TokenType.PERCENT:
-                if not self.is_number(left, right):
-                    raise RuntimeError(
-                        f"Operands of % must be numbers, got: `{left} % {right}`"
-                    )
-                elif right == 0:
-                    raise RuntimeError(f"Modulo by {right} is not allowed")
-                return left % right
+                lnum = self.to_number(left)
+                rnum = self.to_number(right)
+                if self.is_nan(rnum) or rnum == 0:
+                    return float("nan")
+                return lnum % rnum
             case TokenType.GREATER:
-                if not self.is_number(left, right):
-                    raise RuntimeError(
-                        f"Operands of > must be numbers, got: `{left} > {right}`"
-                    )
-                return left > right
+                # Relational: ToPrimitive, then if both strings compare lexicographically,
+                # else ToNumber and numeric comparison. If any operand is NaN, return False.
+                if self.is_string(left, right):
+                    return left > right
+                lnum = self.to_number(left)
+                rnum = self.to_number(right)
+                if self.any_is_nan(lnum, rnum):
+                    return False
+                return lnum > rnum
             case TokenType.GREATER_EQUAL:
-                if not self.is_number(left, right):
-                    raise RuntimeError(
-                        f"Operands of >= must be numbers, got: `{left} >= {right}`"
-                    )
-                return left >= right
+                if self.is_string(left, right):
+                    return left >= right
+                lnum = self.to_number(left)
+                rnum = self.to_number(right)
+                if self.any_is_nan(lnum, rnum):
+                    return False
+                return lnum >= rnum
             case TokenType.LESS:
-                if not self.is_number(left, right):
-                    raise RuntimeError(
-                        f"Operands of < must be numbers, got: `{left} < {right}`"
-                    )
-                return left < right
+                if self.is_string(left, right):
+                    return left < right
+                lnum = self.to_number(left)
+                rnum = self.to_number(right)
+                if self.any_is_nan(lnum, rnum):
+                    return False
+                return lnum < rnum
             case TokenType.LESS_EQUAL:
-                if not self.is_number(left, right):
-                    raise RuntimeError(
-                        f"Operands of <= must be numbers, got: `{left} <= {right}`"
-                    )
-                return left <= right
+                if self.is_string(left, right):
+                    return left <= right
+                lnum = self.to_number(left)
+                rnum = self.to_number(right)
+                if self.any_is_nan(lnum, rnum):
+                    return False
+                return lnum <= rnum
             case TokenType.EQUAL_EQUAL:
+                return self.equal_with_coersion(left, right)
+            case TokenType.EQUAL_EQUAL_EQUAL:
+                if type(left) is not type(right):
+                    return False
+                if self.any_is_nan(left, right):
+                    return False
                 return left == right
             case TokenType.BANG_EQUAL:
                 return left != right
             case _:
                 raise RuntimeError(f"Unknown binary operator: `{expression.operator}`")
+
+    def equal_with_coersion(self, left, right):
+        """
+        Igualdad con coerción al estilo JavaScript para el operador ==.
+        """
+        if type(left) == type(right):
+            return left == right
+
+        if (left is None and right is UNDEFINED) or (
+            left is UNDEFINED and right is None
+        ):
+            return True
+
+        if type(left) is bool:
+            return self.equal_with_coersion(self.to_number(left), right)
+        if type(right) is bool:
+            return self.equal_with_coersion(left, self.to_number(right))
+
+        if self.is_number(left) and self.is_string(right):
+            try:
+                return left == self.to_number(right)
+            except Exception:
+                return False
+        if self.is_string(left) and self.is_number(right):
+            try:
+                return self.to_number(left) == right
+            except Exception:
+                return False
+
+        if self.any_is_nan(left, right):
+            return False
+        return left == right
+
+    def to_number(self, value):
+        if value is UNDEFINED:
+            return float("nan")
+        if value is None:
+            return 0
+        if type(value) is bool:
+            return 1 if value else 0
+        if self.is_number(value):
+            return value
+        if self.is_string(value):
+            s = value.strip()
+            if s == "":
+                return 0
+            try:
+                if "." not in s and "e" not in s and "E" not in s:
+                    return int(s)
+                return float(s)
+            except ValueError:
+                return float("nan")
+        return float("nan")
 
     @evaluate.register
     def _(self, expression: Variable):
@@ -358,10 +397,15 @@ class Interpreter(object):
 
     # Devuelve si el valor es truthy (es decir, si evalua a verdadero)
     def is_truthy(self, value):
-        # Lox mantiene la semántica de Ruby:
-        # false y nil son falsy, el resto son truthy
-        if value is None or value is False:
+        if value is None or value is UNDEFINED:
             return False
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, (int, float)):
+            # 0 y NaN son falsy
+            return value != 0 and not self.is_nan(value)
+        if self.is_string(value):
+            return value != ""
         return True
 
     # Devuelve si los valores recibidos son un número según Lox
@@ -371,3 +415,9 @@ class Interpreter(object):
     # Devuelve si los valores recibidos son una cadena según Lox
     def is_string(self, *values):
         return all(type(value) is str for value in values)
+
+    def is_nan(self, value):
+        return isinstance(value, float) and value != value
+
+    def any_is_nan(self, *values):
+        return any(self.is_nan(v) for v in values)

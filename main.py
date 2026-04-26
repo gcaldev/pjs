@@ -1,6 +1,8 @@
+from Resolver import Resolver
 from Scanner import Scanner
 from Parser import Parser
 from Interpreter import Interpreter
+from JSValues import js_repr, UNDEFINED
 
 
 def main():
@@ -12,11 +14,12 @@ def main():
 
     parser = Parser(tokens)
     expressions = parser.parse()
-
     interpreter = Interpreter()
+    resolver = Resolver(interpreter)
     for expr in expressions:
-        result = interpreter.execute(expr)
-        print(result)
+        resolver.resolve(expr)
+    result = interpreter.interpret(expressions, as_js_repr=True)
+    print(result)
 
 
 if __name__ == "__main__":

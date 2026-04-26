@@ -1,4 +1,5 @@
 from Token import Token, TokenType
+from JSValues import UNDEFINED, NAN
 from Expressions import (
     Binary,
     Grouping,
@@ -38,7 +39,8 @@ class Parser(object):
 
     def statement(self):
         if self._match(TokenType.VAR, TokenType.LET, TokenType.CONST):
-            return self.variable_declaration()
+            is_const = self._previous().token_type == TokenType.CONST
+            return self.variable_declaration(is_const=is_const)
 
         if self._match(TokenType.FUNCTION):
             return self.function_declaration()
@@ -115,8 +117,9 @@ class Parser(object):
         initializer = None
         if self._match(TokenType.SEMICOLON):
             initializer = None
-        elif self._match(TokenType.VAR):
-            initializer = self.variable_declaration()
+        elif self._match(TokenType.VAR, TokenType.LET, TokenType.CONST):
+            is_const = self._previous().token_type == TokenType.CONST
+            initializer = self.variable_declaration(is_const=is_const)
         else:
             initializer = self.expression_statement()
 
@@ -177,7 +180,7 @@ class Parser(object):
         body = self.block()
         return FunDecl(name, parameters, body)
 
-    def variable_declaration(self) -> VarDecl:
+    def variable_declaration(self, is_const: bool = False) -> VarDecl:
         if not self._match(TokenType.IDENTIFIER):
             self._error("Expected variable name")
             name = self._previous()
@@ -191,7 +194,7 @@ class Parser(object):
         if not self._match(TokenType.SEMICOLON):
             if not self._is_at_end() and not self._check(TokenType.RIGHT_BRACE):
                 self._error("Expected ';' after variable declaration")
-        return VarDecl(name, initializer)
+        return VarDecl(name, initializer, is_const=is_const)
 
     def expression(self):
         """Entry point: lowest precedence"""
@@ -365,7 +368,10 @@ class Parser(object):
             return Literal(None)
 
         if self._match(TokenType.UNDEFINED):
-            return Literal(None)
+            return Literal(UNDEFINED)
+
+        if self._match(TokenType.NAN):
+            return Literal(NAN)
 
         if self._match(TokenType.NUMBER):
             return Literal(self._previous().literal)
