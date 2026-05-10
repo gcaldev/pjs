@@ -51,7 +51,7 @@ con salto de linea`""").scan()
     tokens_type = [token.token_type for token in tokens]
 
     expected_tokens_type = [
-        TokenType.STRING,
+        TokenType.TEMPLATE_NOSUBST,
         TokenType.EOF,
     ]
 

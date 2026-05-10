@@ -42,7 +42,7 @@ class Interpreter(object):
 
         self.current_function_env: Env | None = None
 
-    def _handle_tdz(self, statements: list[Stmt]):
+    def _tdz_prescan(self, statements: list[Stmt]):
         """Defino las variables let/const como TDZ hasta su declaración, para detectar accesos antes de la inicialización"""
         for stmt in statements:
             if isinstance(stmt, VarDecl) and stmt.var_type in (
@@ -74,7 +74,7 @@ class Interpreter(object):
     def interpret(self, statements: list[Stmt], as_js_repr: bool = False):
         lastvalue_produced = None
         self._hoist_vars(statements, self.env)
-        self._handle_tdz(statements)
+        self._tdz_prescan(statements)
         for statement in statements:
             # Se guarda el ultimo valor producido por un statement
             lastvalue_produced = self.execute(statement)
@@ -180,15 +180,7 @@ class Interpreter(object):
         self.env = block_env
         try:
             self._hoist_vars(statements, hoist_env)
-            self._handle_tdz(statements)
-            for s in statements:
-                self.execute(s)
-        finally:
-            self.env = previous_env
-                    TokenType.CONST,
-                ):
-                    if stmt.name.lexeme not in block_env.values:
-                        block_env.define(stmt.name.lexeme, TDZ)
+            self._tdz_prescan(statements)
             for s in statements:
                 self.execute(s)
         finally:

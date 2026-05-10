@@ -1,4 +1,4 @@
-from Token import Token, TokenType
+from Token import SUM_LEXEME, Token, TokenType
 from JSValues import UNDEFINED, NAN
 from Expressions import (
     Binary,
@@ -327,7 +327,7 @@ class Parser(object):
                     right,
                     Token(
                         TokenType.PLUS,
-                        lexeme="+",
+                        lexeme=SUM_LEXEME,
                         literal=None,
                         line=self._previous().line,
                     ),
@@ -388,6 +388,12 @@ class Parser(object):
         if self._match(TokenType.STRING):
             return Literal(self._previous().literal)
 
+        if self._match(TokenType.TEMPLATE_NOSUBST):
+            return Literal(self._previous().literal)
+
+        if self._match(TokenType.TEMPLATE_HEAD):
+            return self._handle_template_literal_parse()
+
         if self._match(TokenType.IDENTIFIER):
             return Variable(self._previous())
 
@@ -403,6 +409,48 @@ class Parser(object):
         return None
 
     # ===== Helper methods =====
+    def _make_plus_expr(self, left, right, line):
+        plus = Token(
+            TokenType.PLUS,
+            lexeme=SUM_LEXEME,
+            literal=None,
+            line=line,
+        )
+        return Binary(left, plus, right)
+
+    def _handle_template_literal_parse(self):
+        """
+        Considero el template literal como una concatenación de strings y expresiones normal con el operador +
+        """
+        head = self._previous()
+        result = self._make_plus_expr(
+            Literal(head.literal), self.expression(), head.line
+        )
+
+        while self._match(TokenType.TEMPLATE_MIDDLE):
+            mid = self._previous()
+
+            result = self._make_plus_expr(
+                result,
+                Literal(mid.literal),
+                mid.line,
+            )
+
+            result = self._make_plus_expr(
+                result,
+                self.expression(),
+                mid.line,
+            )
+
+        if not self._match(TokenType.TEMPLATE_TAIL):
+            self._error("Expected end of template literal")
+        tail = self._previous()
+
+        return self._make_plus_expr(
+            result,
+            Literal(tail.literal),
+            tail.line,
+        )
 
     def _handle_function_expr_parse(self):
         name = None

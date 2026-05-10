@@ -1,3 +1,4 @@
+import re
 import pytest
 import math
 
@@ -543,3 +544,121 @@ def test_global_vs_local_hoisting():
     f();
     """
     assert eval_first(src) is UNDEFINED
+
+
+def test_template_literal_basic():
+    assert eval_first("`hola`") == "hola"
+
+
+def test_template_literal_with_expression():
+    assert eval_first("`hola ${1 + 2}`") == "hola 3"
+
+
+def test_template_literal_multiple_expressions():
+    assert eval_first("`${1}${2}${3}`") == "123"
+
+
+def test_template_literal_variable_interpolation():
+    assert eval_first("var x = 5; `x = ${x}`;") == "x = 5"
+
+
+def test_template_literal_string_expression():
+    assert eval_first('`hola ${"mundo"}`') == "hola mundo"
+
+
+def test_template_literal_boolean_expression():
+    assert eval_first("`valor: ${true}`") == "valor: true"
+    assert eval_first("`valor: ${false}`") == "valor: false"
+
+
+def test_template_literal_null_and_undefined():
+    assert eval_first("`a=${null}`") == "a=null"
+    assert eval_first("`b=${undefined}`") == "b=undefined"
+
+
+def test_template_literal_nested_arithmetic():
+    assert eval_first("`resultado=${1 + 2 * 3}`") == "resultado=7"
+
+
+def test_template_literal_function_call():
+    src = """
+    function add(a, b) {
+        return a + b;
+    }
+    `sum=${add(2, 3)}`;
+    """
+    assert eval_first(src) == "sum=5"
+
+
+def test_template_literal_multiple_lines():
+    src = "`hola\\nmundo`"
+    assert eval_first(src) == "hola\nmundo"
+
+
+def test_template_literal_empty():
+    assert eval_first("``") == ""
+
+
+def test_template_literal_only_expression():
+    assert eval_first("`${10}`") == "10"
+
+
+def test_template_literal_expression_with_ternary():
+    assert eval_first("`${true ? 'a' : 'b'}`") == "a"
+
+
+def test_template_literal_expression_with_concat():
+    assert eval_first('`${"a" + "b"}`') == "ab"
+
+
+def test_template_literal_nested_template():
+    assert eval_first("`${`hola ${1 + 1}`}`") == "hola 2"
+
+
+def test_template_literal_with_nan():
+    result = eval_first("`valor=${NaN}`")
+    assert result == "valor=NaN"
+
+
+def test_template_literal_with_postfix_increment():
+    src = """
+    var x = 1;
+    `x=${x++}, after=${x}`;
+    """
+    assert eval_first(src) == "x=1, after=2"
+
+
+def test_template_literal_preserves_spaces():
+    assert eval_first("`  hola ${1}  `") == "  hola 1  "
+
+
+def test_template_literal_with_object_like_string():
+    assert eval_first('`[${"a"}, ${"b"}]`') == "[a, b]"
+
+
+def test_template_literal_inside_function():
+    src = """
+    function greet(name) {
+        return `hola ${name}`;
+    }
+    greet("juan");
+    """
+    assert eval_first(src) == "hola juan"
+
+
+def test_unterminated_template_literal():
+    with pytest.raises(Exception, match="Unterminated template literal"):
+        eval_first("`hola")
+
+
+def test_unterminated_template_expression():
+    with pytest.raises(Exception, match="Unterminated template literal"):
+        eval_first("`hola ${1 + 2`")
+
+
+def test_missing_expression_inside_template():
+    with pytest.raises(
+        Exception,
+        match=re.escape("[Line 1] Error at '': Expect expression"),
+    ):
+        eval_first("`hola ${}`")

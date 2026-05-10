@@ -1,6 +1,8 @@
 from enum import Enum, auto
 from typing import Union
 
+SUM_LEXEME = "+"
+
 
 class TokenType(Enum):
     # Tokens de un solo carácter
@@ -37,6 +39,10 @@ class TokenType(Enum):
     IDENTIFIER = auto()
     STRING = auto()
     NUMBER = auto()
+    TEMPLATE_NOSUBST = auto()  # Template sin interpolar partes
+    TEMPLATE_HEAD = auto()  # Parte antes de la primera interpolacion ${
+    TEMPLATE_MIDDLE = auto()  # Parte entre interpolaciones } texto ${
+    TEMPLATE_TAIL = auto()  # Parte después de la ultima interpolacion } texto`
 
     # Keywords
     AND = auto()

@@ -10,6 +10,14 @@ from Token import (
 
 class Scanner(object):
     def __init__(self, source: str):
+        self.escape_map = {
+            "n": "\n",
+            "t": "\t",
+            "r": "\r",
+            "\\": "\\",
+            "`": "`",
+            "$": "$",
+        }
         self.tokens: list[Token] = []
         self.source = source
         self.start = 0
@@ -50,9 +58,7 @@ class Scanner(object):
             case "'" | '"':
                 self._handle_string(delimiter=c, allow_multiline=False)
             case "`":
-                self._handle_string(
-                    delimiter=c, allow_multiline=True
-                )  # TODO: Ver si es necesario implementar interpolación de strings.
+                self._handle_template_literal()
             case _ if str.isdigit(c):
                 self._handle_number()
             case _ if self._is_alpha(c):
@@ -76,6 +82,11 @@ class Scanner(object):
 
     def _previous(self) -> str:
         return self.source[self.current - 1]
+
+    def _next(self) -> str:
+        if self.current + 1 >= len(self.source):
+            return "\0"
+        return self.source[self.current + 1]
 
     def _match(self, expected: str) -> bool:
         lookahead = self._lookahead()
@@ -130,6 +141,90 @@ class Scanner(object):
 
         value = self.source[self.start + 1 : self.current - 1]
         self.add_token(TokenType.STRING, literal=value)
+
+    def _read_raw_part(self) -> str:
+        """
+        Lectura hasta el proximo backtick o ${
+        """
+        part: list[str] = []
+        while not self._is_at_end():
+            ch = self._lookahead()
+            if ch == "`":
+                break
+            if ch == "$" and self._next() == "{":
+                break
+            if ch == "\\":
+                self._advance()
+                escaped = self._lookahead()
+                part.append(self.escape_map.get(escaped, escaped))
+                self._advance()
+                continue
+            if ch == "\n":
+                self.line += 1
+            part.append(ch)
+            self._advance()
+        return "".join(part)
+
+    def _make_template_token(self, token_type, content, line):
+        return Token(token_type, lexeme="", literal=content, line=line)
+
+    def _handle_template_literal(self):
+        """
+        Escanea un template literal, emitiendo tokens TEMPLATE_NOSUBST, TEMPLATE_HEAD, TEMPLATE_MIDDLE y TEMPLATE_TAIL segun corresponda
+        """
+        line = self.line
+
+        part = self._read_raw_part()
+        if self._is_at_end():
+            raise Exception("Unterminated template literal")
+
+        if self._lookahead() == "`":
+            self._advance()
+            self.tokens.append(
+                self._make_template_token(TokenType.TEMPLATE_NOSUBST, part, line)
+            )
+            return
+
+        # Hasta aca tenemos un TEMPLATE_HEAD, falta el ${ y el TEMPLATE_MIDDLE/TEMPLATE_TAIL
+        self._emit_template_chunk(TokenType.TEMPLATE_HEAD, part, line)
+
+        while True:
+            part = self._read_raw_part()
+            if self._is_at_end():
+                raise Exception("Unterminated template literal")
+            if self._lookahead() == "`":
+                self._advance()  # consume closing `
+                self.tokens.append(
+                    self._make_template_token(TokenType.TEMPLATE_TAIL, part, line)
+                )
+                return
+
+            self._emit_template_chunk(TokenType.TEMPLATE_MIDDLE, part, line)
+
+    def _emit_template_chunk(self, token_type, part, line):
+        """Emite un token de template literal con el contenido dado"""
+        self._advance()  # $
+        self._advance()  # {
+        self.tokens.append(self._make_template_token(token_type, part, line))
+        self._scan_template_expr()
+
+    def _scan_template_expr(self):
+        """
+        Escaneo tokens normales hasta encontrar el cierre de la expresión del template literal }
+        """
+        depth = 1
+        while not self._is_at_end():
+            ch = self._lookahead()
+            if ch == "}":
+                depth -= 1
+                if depth == 0:
+                    self._advance()
+                    return
+            elif ch == "{":
+                depth += 1
+            self.start = self.current
+            self.scan_token()
+        raise Exception("Unterminated template expression")
 
     def _handle_number(self):
         scanned_dots_counter = 0
