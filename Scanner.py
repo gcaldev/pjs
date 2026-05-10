@@ -56,7 +56,7 @@ class Scanner(object):
             case "/":
                 self._handle_slash()
             case "'" | '"':
-                self._handle_string(delimiter=c, allow_multiline=False)
+                self._handle_string(delimiter=c)
             case "`":
                 self._handle_template_literal()
             case _ if str.isdigit(c):
@@ -121,12 +121,12 @@ class Scanner(object):
         if level > 0:
             raise Exception(f"Unterminated comment: `{self.lexeme()}`")
 
-    def _handle_string(self, delimiter: str, allow_multiline: bool):
+    def _handle_string(self, delimiter: str):
         while not self._is_at_end():
             if self._lookahead() == delimiter:
                 break
 
-            if not allow_multiline and self._lookahead() == "\n":
+            if self._lookahead() == "\n":
                 raise Exception(f"Unterminated string: `{self.lexeme()}`")
 
             if self._lookahead() == "\n":
