@@ -16,8 +16,43 @@ class _UndefinedType:
         return False
 
 
+class _TDZType:
+    _instance = None
+
+    def __new__(clazz):
+        if clazz._instance is None:
+            clazz._instance = super().__new__(clazz)
+        return clazz._instance
+
+    def __repr__(self) -> str:
+        return "<TDZ>"
+
+
+class TDZError(RuntimeError):
+    """Error lanzado al acceder a una variable en Temporal Dead Zone."""
+
+    pass
+
+
 UNDEFINED = _UndefinedType()
+TDZ = _TDZType()
 NAN = float("nan")
+
+
+def typeof_value(value) -> str:
+    if value is UNDEFINED:
+        return "undefined"
+    if value is None:
+        return "object"
+    if isinstance(value, bool):
+        return "boolean"
+    if isinstance(value, (int, float)):
+        return "number"
+    if isinstance(value, str):
+        return "string"
+    if callable(value):
+        return "function"
+    return "object"
 
 
 def js_repr(value) -> str:

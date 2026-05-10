@@ -298,3 +298,248 @@ def test_relational_string_and_number():
 
 def test_plus_boolean_concat():
     assert eval_first('true + "!"') == "true!"
+
+
+def test_hoised_variable_is_undefined():
+    assert eval_first("x; var x = 5;") is UNDEFINED
+
+
+def test_hoised_variable_in_function():
+    src = """
+    function f() {
+        return x;
+        var x = 10;
+    }
+    f();
+    """
+    assert eval_first(src) is UNDEFINED
+
+
+def test_hoised_nested_if_variable():
+    src = """
+    function f() {
+        if(true){
+            var x = 3;
+        }
+        return x;
+    }
+    f();
+    """
+    assert eval_first(src) == 3
+
+
+def test_function_overrides_var():
+    src = """
+    var a = 1;
+    function a() { return 2; }
+    a;
+    """
+    assert callable(eval_first(src))
+
+
+def test_var_overrides_function_in_execution():
+    src = """
+    function a() { return 2; }
+    var a = 1;
+    a;
+    """
+    assert eval_first(src) == 1
+
+
+def test_function_and_let_conflict():
+    with pytest.raises(RuntimeError):
+        eval_first("""
+        function a() {}
+        let a = 1;
+        """)
+
+
+def test_let_shadowing():
+    with pytest.raises(RuntimeError):
+        eval_first("""
+        let x = 1;
+        {
+            x;
+            let x = 2;
+        }
+        """)
+
+
+def test_typeof_tdz_throws():
+    with pytest.raises(RuntimeError):
+        eval_first("""
+        typeof x;
+        let x = 1;
+        """)
+
+
+def test_param_vs_var():
+    src = """
+    function f(x) {
+        var x = 2;
+        return x;
+    }
+    f(1);
+    """
+    assert eval_first(src) == 2
+
+
+def test_param_read_before_var():
+    src = """
+    function f(x) {
+        return x;
+        var x = 2;
+    }
+    f(1);
+    """
+    assert eval_first(src) == 1
+
+
+def test_multiple_var_hoisting():
+    src = """
+    function f() {
+        x = 1;
+        var x;
+        return x;
+    }
+    f();
+    """
+    assert eval_first(src) == 1
+
+
+def test_var_redeclaration():
+    src = """
+    var x = 1;
+    var x = 2;
+    x;
+    """
+    assert eval_first(src) == 2
+
+
+def test_var_let_conflict():
+    with pytest.raises(RuntimeError):
+        eval_first("""
+        let x = 1;
+        var x = 2;
+        """)
+
+
+def test_function_inside_block_scope():
+    src = """
+    {
+        function f() { return 1; }
+    }
+    f();
+    """
+    assert eval_first(src) == 1
+
+
+def test_nested_shadow():
+    with pytest.raises(RuntimeError):
+        eval_first("""
+        let x = 1;
+        function f() {
+            x;
+            let x = 2;
+        }
+        f();
+        """)
+
+
+def test_function_expression_not_hoisted():
+    with pytest.raises(RuntimeError):
+        eval_first("""
+        f();
+        let f = function() { return 1; };
+        """)
+
+
+def test_closure_with_hoisting():
+    src = """
+    function outer() {
+        return inner();
+        function inner() { return 2; }
+    }
+    outer();
+    """
+    assert eval_first(src) == 2
+
+
+def test_var_used_before_assignment():
+    src = """
+    function f() {
+        return x;
+        var x = 5;
+    }
+    f();
+    """
+    assert eval_first(src) is UNDEFINED
+
+
+def test_let_in_for_scope():
+    src = """
+    let x = 0;
+    for (let i = 0; i < 3; i = i + 1) {
+        x = x + i;
+    }
+    x;
+    """
+    assert eval_first(src) == 3
+
+
+def test_return_before_var():
+    src = """
+    function f() {
+        return x;
+        var x = 10;
+    }
+    f();
+    """
+    assert eval_first(src) is UNDEFINED
+
+
+def test_inner_function_hoisting():
+    src = """
+    function f() {
+        return g();
+        function g() { return 3; }
+    }
+    f();
+    """
+    assert eval_first(src) == 3
+
+
+def test_function_priority_over_var():
+    src = """
+    function a() { return 1; }
+    var a;
+    a();
+    """
+    assert eval_first(src) == 1
+
+
+def test_var_shadowing():
+    src = """
+    var x = 1;
+    function f() {
+        var x = 2;
+        function g() {
+            return x;
+        }
+        return g();
+    }
+    f();
+    """
+    assert eval_first(src) == 2
+
+
+def test_global_vs_local_hoisting():
+    src = """
+    var x = 1;
+    function f() {
+        return x;
+        var x = 2;
+    }
+    f();
+    """
+    assert eval_first(src) is UNDEFINED

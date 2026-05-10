@@ -1,5 +1,7 @@
 from typing import Optional
 
+from JSValues import TDZ, TDZError
+
 
 class Env(object):
     def __init__(self, *, enclosing: Optional["Env"] = None):
@@ -44,7 +46,10 @@ class Env(object):
             scope = self.ancestor(distance)
 
         if name in scope.values:
-            return scope.values[name]
+            value = scope.values[name]
+            if value is TDZ:
+                raise TDZError(f"Cannot access '{name}' before initialization")
+            return value
 
         # Lox considera un error el intentar referenciar una
         # variable inexistente

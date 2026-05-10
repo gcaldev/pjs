@@ -18,11 +18,19 @@ from Expressions import (
     Literal,
     Unary,
 )
-from Expressions import Variable, Assignment, Logic, Call, Ternary, Postfix
+from Expressions import (
+    Variable,
+    Assignment,
+    Logic,
+    Call,
+    Ternary,
+    Postfix,
+    FunctionExpr,
+)
 from Function import Function, ReturnValue
 from Token import TokenType
 from Env import Env
-from JSValues import UNDEFINED, js_repr
+from JSValues import UNDEFINED, TDZ, TDZError, js_repr, typeof_value
 
 
 class Interpreter(object):
@@ -32,9 +40,41 @@ class Interpreter(object):
 
         self.local_scope_depths: dict[Variable | Assignment, int] = {}
 
+        self.current_function_env: Env | None = None
+
+    def _handle_tdz(self, statements: list[Stmt]):
+        """Defino las variables let/const como TDZ hasta su declaración, para detectar accesos antes de la inicialización"""
+        for stmt in statements:
+            if isinstance(stmt, VarDecl) and stmt.var_type in (
+                TokenType.LET,
+                TokenType.CONST,
+            ):
+                if stmt.name.lexeme not in self.env.values:
+                    self.env.define(stmt.name.lexeme, TDZ)
+
+    def _hoist_vars(self, statements: list[Stmt], env: "Env"):
+        """Hoistea las declaraciones de variables var y funciones al inicio del bloque, para simular el comportamiento de JavaScript"""
+        for stmt in statements:
+            if isinstance(stmt, VarDecl) and stmt.var_type == TokenType.VAR:
+                if stmt.name.lexeme not in env.values:
+                    env.define(stmt.name.lexeme, UNDEFINED)
+            elif isinstance(stmt, FunDecl):
+                fun = Function(stmt, env)
+                env.define(stmt.name.lexeme, fun)
+            elif isinstance(stmt, BlockStmt):
+                self._hoist_vars(stmt.statements, env)
+            elif isinstance(stmt, IfStmt):
+                self._hoist_vars([stmt.then_branch], env)
+                if stmt.else_branch is not None:
+                    self._hoist_vars([stmt.else_branch], env)
+            elif isinstance(stmt, WhileStmt):
+                self._hoist_vars([stmt.body], env)
+
     # Interpretar es ejecutar la lista de statements que tenemos
     def interpret(self, statements: list[Stmt], as_js_repr: bool = False):
         lastvalue_produced = None
+        self._hoist_vars(statements, self.env)
+        self._handle_tdz(statements)
         for statement in statements:
             # Se guarda el ultimo valor producido por un statement
             lastvalue_produced = self.execute(statement)
@@ -63,20 +103,38 @@ class Interpreter(object):
 
     @execute.register
     def _(self, statement: VarDecl):
+        if statement.var_type == TokenType.VAR:
+            if statement.initializer is not None:
+                value = self.evaluate(statement.initializer)
+
+                env = self.env
+                while env is not None:
+                    if statement.name.lexeme in env.values:
+                        if statement.name.lexeme in env.consts:
+                            raise RuntimeError(
+                                f"Cannot reassign constant variable '{statement.name.lexeme}'"
+                            )
+                        env.values[statement.name.lexeme] = value
+                        break
+                    env = env.enclosing
+            return UNDEFINED
+
         if statement.initializer is not None:
             value = self.evaluate(statement.initializer)
         else:
             value = UNDEFINED
-        self.env.define(statement.name.lexeme, value, is_const=statement.is_const)
+        self.env.assign(statement.name.lexeme, value)
+        if statement.is_const:
+            self.env.consts.add(statement.name.lexeme)
         return UNDEFINED
 
     @execute.register
     def _(self, statement: FunDecl):
-        # Ejecutar una declaración de una variable es solamente...
-        # 1. Construir la función
         fun = Function(statement, self.env)
-        # 2. Atarla a su nombre
-        self.env.define(statement.name.lexeme, fun)
+        if statement.name.lexeme in self.env.values:
+            self.env.values[statement.name.lexeme] = fun
+        else:
+            self.env.define(statement.name.lexeme, fun)
         return UNDEFINED
 
     @execute.register
@@ -107,18 +165,30 @@ class Interpreter(object):
 
     @execute.register
     def _(self, statement: BlockStmt):
-        return self.execute_block(statement.statements, Env(enclosing=self.env))
+        return self.execute_block(
+            statement.statements,
+            Env(enclosing=self.env),
+            hoist_env=self.current_function_env,
+        )
 
-    def execute_block(self, statements: list[Stmt], block_env: Env):
-        # Para ejecutar un bloque de statements, tenemos que crear un nuevo entorno
-        # y ejecutar los statements ahí
-        # Tenemos que guardarnos el entorno del bloque, y después acordarnos de volver al previo
+    def execute_block(
+        self, statements: list[Stmt], block_env: Env, hoist_env: Env = None
+    ):
+        if hoist_env is None:
+            hoist_env = block_env
         previous_env = self.env
         self.env = block_env
-        # Ojo con los returns! Hacemos un try/finally para asegurarnos de
-        # recuperar el entorno previo pase lo que pase
         try:
-            self.env = block_env
+            self._hoist_vars(statements, hoist_env)
+            self._handle_tdz(statements)
+            for s in statements:
+                self.execute(s)
+        finally:
+            self.env = previous_env
+                    TokenType.CONST,
+                ):
+                    if stmt.name.lexeme not in block_env.values:
+                        block_env.define(stmt.name.lexeme, TDZ)
             for s in statements:
                 self.execute(s)
         finally:
@@ -143,6 +213,16 @@ class Interpreter(object):
 
     @evaluate.register
     def _(self, expression: Unary):
+        match expression.operator.token_type:
+            case TokenType.TYPEOF:
+                try:
+                    value = self.evaluate(expression.right)
+                    return typeof_value(value)
+                except TDZError:
+                    raise
+                except RuntimeError:
+                    return "undefined"
+
         right = self.evaluate(expression.right)
 
         match expression.operator.token_type:
@@ -356,6 +436,10 @@ class Interpreter(object):
         if self.is_truthy(condition):
             return self.evaluate(expression.true_branch)
         return self.evaluate(expression.false_branch)
+
+    @evaluate.register
+    def _(self, expression: FunctionExpr):
+        return Function(expression, self.env)
 
     @evaluate.register
     def _(self, expression: Postfix):

@@ -36,12 +36,19 @@ class Function(object):
 
         # Ejecutamos el cuerpo de la función y devolvemos el return value que salte
         try:
-            interpreter.execute_block(self.declaration.body, function_env)
+            previous_function_env = interpreter.current_function_env
+            interpreter.current_function_env = function_env
+            interpreter.execute_block(
+                self.declaration.body, function_env, hoist_env=function_env
+            )
         except ReturnValue as returnvalue:
+            interpreter.current_function_env = previous_function_env
             return returnvalue.value
 
+        interpreter.current_function_env = previous_function_env
         return UNDEFINED
 
     def __repr__(self) -> str:
         params = ", ".join(param.lexeme for param in self.declaration.parameters)
-        return f"<fn {self.declaration.name.lexeme}({params})>"
+        name = self.declaration.name.lexeme if self.declaration.name else "(anonymous)"
+        return f"<fn {name}({params})>"

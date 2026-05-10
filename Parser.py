@@ -11,6 +11,7 @@ from Expressions import (
     Call,
     Ternary,
     Postfix,
+    FunctionExpr,
 )
 from Stmt import (
     Stmt,
@@ -39,8 +40,8 @@ class Parser(object):
 
     def statement(self):
         if self._match(TokenType.VAR, TokenType.LET, TokenType.CONST):
-            is_const = self._previous().token_type == TokenType.CONST
-            return self.variable_declaration(is_const=is_const)
+            var_type = self._previous().token_type
+            return self.variable_declaration(var_type=var_type)
 
         if self._match(TokenType.FUNCTION):
             return self.function_declaration()
@@ -118,8 +119,9 @@ class Parser(object):
         if self._match(TokenType.SEMICOLON):
             initializer = None
         elif self._match(TokenType.VAR, TokenType.LET, TokenType.CONST):
-            is_const = self._previous().token_type == TokenType.CONST
-            initializer = self.variable_declaration(is_const=is_const)
+            initializer = self.variable_declaration(
+                var_type=self._previous().token_type
+            )
         else:
             initializer = self.expression_statement()
 
@@ -139,12 +141,14 @@ class Parser(object):
 
         body = self.statement()
         if increment is not None:
-            body = BlockStmt([body, ExpressionStmt(increment)])
+            body = BlockStmt(
+                [body, ExpressionStmt(increment)], dedicated_var_scope=False
+            )
         if condition is None:
             condition = Literal(True)
         body = WhileStmt(condition, body)
         if initializer is not None:
-            body = BlockStmt([initializer, body])
+            body = BlockStmt([initializer, body], dedicated_var_scope=False)
         return body
 
     def return_statement(self) -> ReturnStmt:
@@ -180,7 +184,7 @@ class Parser(object):
         body = self.block()
         return FunDecl(name, parameters, body)
 
-    def variable_declaration(self, is_const: bool = False) -> VarDecl:
+    def variable_declaration(self, var_type: TokenType) -> VarDecl:
         if not self._match(TokenType.IDENTIFIER):
             self._error("Expected variable name")
             name = self._previous()
@@ -194,7 +198,7 @@ class Parser(object):
         if not self._match(TokenType.SEMICOLON):
             if not self._is_at_end() and not self._check(TokenType.RIGHT_BRACE):
                 self._error("Expected ';' after variable declaration")
-        return VarDecl(name, initializer, is_const=is_const)
+        return VarDecl(name, initializer, var_type=var_type)
 
     def expression(self):
         """Entry point: lowest precedence"""
@@ -295,6 +299,11 @@ class Parser(object):
         # a diferencia de las reglas de expresiones binarias,
         # acá el operador es un prefijo.
         # primero chequeamos el operador, y después seguimos
+        if self._match(TokenType.TYPEOF):
+            operator = self._previous()
+            right = self.unary()
+            return Unary(operator, right)
+
         if self._match(TokenType.BANG, TokenType.MINUS):
             operator = self._previous()
             right = self.unary()
@@ -382,6 +391,9 @@ class Parser(object):
         if self._match(TokenType.IDENTIFIER):
             return Variable(self._previous())
 
+        if self._match(TokenType.FUNCTION):
+            return self._handle_function_expr_parse()
+
         if self._match(TokenType.LEFT_PAREN):
             expr = self.expression()
             self._consume(TokenType.RIGHT_PAREN, "Expect ')' after expression")
@@ -391,6 +403,29 @@ class Parser(object):
         return None
 
     # ===== Helper methods =====
+
+    def _handle_function_expr_parse(self):
+        name = None
+        if self._check(TokenType.IDENTIFIER):
+            self._advance()
+            name = self._previous()
+        parameters = []
+        if not self._match(TokenType.LEFT_PAREN):
+            self._error("Expected '(' after function")
+        while not self._is_at_end() and not self._check(TokenType.RIGHT_PAREN):
+            if not self._match(TokenType.IDENTIFIER):
+                self._error("Expected parameter name")
+                break
+            parameters.append(self._previous())
+            if not self._match(TokenType.COMMA):
+                break
+        if not self._match(TokenType.RIGHT_PAREN):
+            self._error("Expected ')' after parameters")
+        if not self._match(TokenType.LEFT_BRACE):
+            self._error("Expected '{' before function body")
+        body = self.block()
+        return FunctionExpr(name, parameters, body)
+
     def _match(self, *types: TokenType) -> bool:
         """Check if current token matches any of the given types"""
         for token_type in types:

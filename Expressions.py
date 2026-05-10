@@ -108,3 +108,15 @@ class Ternary(Expressions):
 
     def __repr__(self) -> str:
         return f"Ternary({self.condition}, {self.true_branch}, {self.false_branch})"
+
+
+class FunctionExpr(Expressions):
+    def __init__(self, name, parameters, body):
+        self.name = name
+        self.parameters = parameters
+        self.body = body
+
+    def __repr__(self) -> str:
+        params = ", ".join(p.lexeme for p in self.parameters)
+        name = self.name.lexeme if self.name else "(anonymous)"
+        return f"FunctionExpr({name}({params}))"

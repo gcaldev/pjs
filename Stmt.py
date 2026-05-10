@@ -17,8 +17,9 @@ class ExpressionStmt(Stmt):
 
 # blockStmt       → "{" statement* "}" ;
 class BlockStmt(Stmt):
-    def __init__(self, statements: list[Stmt]):
+    def __init__(self, statements: list[Stmt], dedicated_var_scope: bool = True):
         self.statements = statements
+        self.dedicated_var_scope = dedicated_var_scope
 
     def __repr__(self) -> str:
         return f"{{ {'; '.join(str(stmt) for stmt in self.statements)} }}"
@@ -26,10 +27,11 @@ class BlockStmt(Stmt):
 
 # varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
 class VarDecl(Stmt):
-    def __init__(self, name: Token, initializer: Expr | None, is_const: bool = False):
+    def __init__(self, name: Token, initializer: Expr | None, var_type: TokenType):
         self.name = name
         self.initializer = initializer
-        self.is_const = is_const
+        self.is_const = var_type == TokenType.CONST
+        self.var_type = var_type
 
     def get_keyword(self) -> str:
         match self.name.token_type:
