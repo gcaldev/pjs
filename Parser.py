@@ -216,7 +216,7 @@ class Parser(object):
         return expr
 
     def conditional(self):
-        expr = self.logic_or()
+        expr = self.nullish()
         if self._match(TokenType.QUESTION):
             true_branch = self.assignment()
             if not self._match(TokenType.COLON):
@@ -224,6 +224,14 @@ class Parser(object):
                 return expr
             false_branch = self.assignment()
             return Ternary(expr, true_branch, false_branch)
+        return expr
+
+    def nullish(self):
+        expr = self.logic_or()
+        while self._match(TokenType.QUESTION_QUESTION):
+            operator = self._previous()
+            right = self.logic_or()
+            expr = Logic(expr, operator, right)
         return expr
 
     def logic_or(self):
@@ -395,12 +403,18 @@ class Parser(object):
             return self._handle_template_literal_parse()
 
         if self._match(TokenType.IDENTIFIER):
-            return Variable(self._previous())
+            name_token = self._previous()
+            if self._match(TokenType.ARROW_RIGHT):
+                return self._parse_arrow_body([name_token])
+            return Variable(name_token)
 
         if self._match(TokenType.FUNCTION):
             return self._handle_function_expr_parse()
 
         if self._match(TokenType.LEFT_PAREN):
+            arrow = self._try_arrow_from_paren()
+            if arrow is not None:
+                return arrow
             expr = self.expression()
             self._consume(TokenType.RIGHT_PAREN, "Expect ')' after expression")
             return Grouping(expr)
@@ -473,6 +487,43 @@ class Parser(object):
             self._error("Expected '{' before function body")
         body = self.block()
         return FunctionExpr(name, parameters, body)
+
+    def _end_arrow_parse(self, saved, params):
+        if self._match(TokenType.ARROW_RIGHT):
+            return self._parse_arrow_body(params)
+        self.current = saved
+        return None
+
+    def _try_arrow_from_paren(self):
+        """
+        Intenta parsear una arrow function con sintaxis de parentesis, en caso de no lograrlo vuelve al estado anterior
+        """
+        saved = self.current
+        params = []
+        if self._match(TokenType.RIGHT_PAREN):
+            return self._end_arrow_parse(saved, params)
+
+        while True:
+            if not self._match(TokenType.IDENTIFIER):
+                self.current = saved
+                return None
+            params.append(self._previous())
+            if self._match(TokenType.RIGHT_PAREN):
+                return self._end_arrow_parse(saved, params)
+            if not self._match(TokenType.COMMA):
+                self.current = saved
+                return None
+
+    def _parse_arrow_body(self, params):
+        """
+        Parsea el cuerpo de una arrow function, que puede ser un bloque o una expresion
+        """
+        if self._match(TokenType.LEFT_BRACE):
+            body = self.block()
+        else:
+            expr = self.assignment()
+            body = [ReturnStmt(expr)]
+        return FunctionExpr(None, params, body)
 
     def _match(self, *types: TokenType) -> bool:
         """Check if current token matches any of the given types"""

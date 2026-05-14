@@ -30,6 +30,7 @@ class TokenType(Enum):
     LESS = auto()
     LESS_EQUAL = auto()
     QUESTION = auto()
+    QUESTION_QUESTION = auto()
     COLON = auto()
     ARROW_RIGHT = auto()
     EQUAL_EQUAL_EQUAL = auto()
@@ -122,7 +123,6 @@ SimpleTokens = {
     ",": TokenType.COMMA,
     "-": TokenType.MINUS,
     ";": TokenType.SEMICOLON,
-    "?": TokenType.QUESTION,
     ":": TokenType.COLON,
     "%": TokenType.PERCENT,
 }
@@ -147,6 +147,8 @@ ComplexTokens = {
     ">": TokenType.GREATER,
     "&&": TokenType.AND,
     "||": TokenType.OR,
+    "??": TokenType.QUESTION_QUESTION,
+    "?": TokenType.QUESTION,
 }
 
 ComplexTokensFirstCharacter = set(token[0] for token in ComplexTokens)

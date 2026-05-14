@@ -8,6 +8,7 @@ from Parser import Parser
 from Interpreter import Interpreter
 from Token import TokenType
 from JSValues import UNDEFINED
+from Function import Function
 
 
 def eval_first(src: str):
@@ -662,3 +663,207 @@ def test_missing_expression_inside_template():
         match=re.escape("[Line 1] Error at '': Expect expression"),
     ):
         eval_first("`hola ${}`")
+
+
+def test_nullish_coalescing_null_returns_right():
+    assert eval_first("null ?? 5;") == 5
+
+
+def test_nullish_coalescing_undefined_returns_right():
+    assert eval_first("undefined ?? 10;") == 10
+
+
+def test_nullish_coalescing_zero_returns_left():
+    assert eval_first("0 ?? 5;") == 0
+
+
+def test_nullish_coalescing_false_returns_left():
+    assert eval_first("false ?? true;") == False
+
+
+def test_nullish_coalescing_empty_string_returns_left():
+    assert eval_first('"" ?? "fallback";') == ""
+
+
+def test_nullish_coalescing_nan_returns_left():
+    assert math.isnan(eval_first("NaN ?? 42;"))
+
+
+def test_nullish_coalescing_left_to_right():
+    assert eval_first("null ?? undefined ?? 7;") == 7
+
+
+def test_nullish_coalescing_short_circuit():
+    assert eval_first("""
+        var x = 0;
+        function inc() {
+            x = x + 1;
+            return 99;
+        }
+
+        1 ?? inc();
+        x;
+    """) == 0
+
+
+def test_nullish_coalescing_evaluates_right_when_needed():
+    assert eval_first("""
+        var x = 0;
+        function inc() {
+            x = x + 1;
+            return 99;
+        }
+
+        null ?? inc();
+        x;
+    """) == 1
+
+
+def test_nullish_coalescing_with_variable():
+    assert eval_first("""
+        let a = undefined;
+        a ?? "default";
+    """) == "default"
+
+
+def test_nullish_coalescing_with_assignment():
+    assert eval_first("""
+        let a = null;
+        let b = a ?? 20;
+        b;
+    """) == 20
+
+
+def test_nullish_coalescing_with_function_left_returns_function():
+    assert isinstance(
+        eval_first("""
+        function f() {}
+        f ?? 123;
+    """),
+        Function,
+    )
+
+
+def test_nullish_coalescing_with_nested_expression():
+    assert eval_first("""
+        (null ?? 2) + 3;
+    """) == 5
+
+
+def test_nullish_coalescing_precedence_with_or():
+    assert eval_first("""
+        null || undefined ?? 5;
+    """) == 5
+
+
+def test_nullish_coalescing_precedence_with_and():
+    assert eval_first("""
+        true && null ?? 8;
+    """) == 8
+
+
+def test_nullish_coalescing_with_ternary():
+    assert eval_first("""
+        true ? null ?? 7 : 0;
+    """) == 7
+
+
+def test_arrow_single_param_expression_body():
+    assert eval_first("const f = x => x + 1; f(5);") == 6
+
+
+def test_arrow_multi_param_expression_body():
+    assert eval_first("const add = (a, b) => a + b; add(3, 4);") == 7
+
+
+def test_arrow_no_params_expression_body():
+    assert eval_first("const f = () => 99; f();") == 99
+
+
+def test_arrow_block_body_explicit_return():
+    assert eval_first("const f = x => { return x * 2; }; f(6);") == 12
+
+
+def test_arrow_block_body_no_return_is_undefined():
+    assert eval_first("const f = () => { 1 + 1; }; f();") is UNDEFINED
+
+
+def test_arrow_implicit_return_is_expression_value():
+    assert eval_first("const f = x => x * x; f(4);") == 16
+
+
+def test_arrow_closes_over_outer_variable():
+    assert eval_first("""
+        let x = 10;
+        const f = () => x;
+        f();
+    """) == 10
+
+
+def test_arrow_closes_over_outer_variable_after_mutation():
+    assert eval_first("""
+        let x = 1;
+        const f = () => x;
+        x = 42;
+        f();
+    """) == 42
+
+
+def test_arrow_as_argument():
+    assert eval_first("""
+        function apply(f, x) { return f(x); }
+        apply(n => n + 1, 9);
+    """) == 10
+
+
+def test_arrow_returning_arrow():
+    assert eval_first("""
+        const add = a => b => a + b;
+        add(3)(4);
+    """) == 7
+
+
+def test_arrow_nested():
+    assert eval_first("""
+        const outer = x => {
+            const inner = y => x + y;
+            return inner(2);
+        };
+        outer(5);
+    """) == 7
+
+
+def test_arrow_with_ternary_body():
+    assert eval_first("""
+        const abs = x => x < 0 ? -x : x;
+        abs(-7);
+    """) == 7
+
+
+def test_arrow_with_template_literal_body():
+    assert eval_first("""
+        const greet = name => `hola ${name}`;
+        greet("mundo");
+    """) == "hola mundo"
+
+
+def test_arrow_is_function_instance():
+    assert isinstance(eval_first("const f = x => x; f;"), Function)
+
+
+def test_arrow_multi_statement_block():
+    assert eval_first("""
+        const f = x => {
+            let y = x * 2;
+            return y + 1;
+        };
+        f(3);
+    """) == 7
+
+
+def test_arrow_immediately_invoked():
+    assert eval_first("(x => x + 1)(10);") == 11
+
+
+def test_arrow_no_params_immediately_invoked():
+    assert eval_first("(() => 42)();") == 42

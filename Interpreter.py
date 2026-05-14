@@ -402,6 +402,10 @@ class Interpreter(object):
             if not self.is_truthy(left):
                 return left
 
+        if expression.operator.token_type == TokenType.QUESTION_QUESTION:
+            if left is not None and left is not UNDEFINED:
+                return left
+
         return self.evaluate(expression.right)
 
     @evaluate.register
