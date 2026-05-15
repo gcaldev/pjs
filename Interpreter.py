@@ -10,6 +10,9 @@ from Stmt import (
     IfStmt,
     WhileStmt,
     ReturnStmt,
+    ContinueStmt,
+    BreakStmt,
+    ForBodyStmt,
 )
 from Expressions import (
     Expressions as Expr,
@@ -27,7 +30,7 @@ from Expressions import (
     Postfix,
     FunctionExpr,
 )
-from Function import Function, ReturnValue
+from Function import Function, ReturnValue, BreakException, ContinueException
 from Token import TokenType
 from Env import Env
 from JSValues import UNDEFINED, TDZ, TDZError, js_repr, typeof_value
@@ -145,7 +148,15 @@ class Interpreter(object):
             returnvalue = self.evaluate(statement.value)
 
         raise ReturnValue(returnvalue)
+    
+    @execute.register
+    def _(self, statement: BreakStmt):
+        raise BreakException()
 
+    @execute.register
+    def _(self, statement: ContinueStmt):
+        raise ContinueException()
+    
     @execute.register
     def _(self, statement: IfStmt):
         # El if se implementa con... un if
@@ -159,9 +170,26 @@ class Interpreter(object):
 
     @execute.register
     def _(self, statement: WhileStmt):
-        # El while se implementa con... un while
         while self.is_truthy(self.evaluate(statement.condition)):
+            try:
+                self.execute(statement.body)
+            except ContinueException:
+                continue
+            except BreakException:
+                break
+            
+    @execute.register
+    def _(self, statement: ForBodyStmt):
+        """
+        Ejecuta el cuerpo del for loop.
+        Si hay continue, ejecuta el increment ANTES de la siguiente iteración.
+        """
+        try:
             self.execute(statement.body)
+        except ContinueException:
+            pass  # Continúa sin re-lanzar
+        # SIEMPRE ejecuta el increment
+        self.execute(statement.increment)
 
     @execute.register
     def _(self, statement: BlockStmt):

@@ -22,6 +22,9 @@ from Stmt import (
     IfStmt,
     WhileStmt,
     ReturnStmt,
+    BreakStmt,
+    ContinueStmt,
+    ForBodyStmt,
 )
 
 
@@ -48,6 +51,14 @@ class Parser(object):
 
         if self._match(TokenType.RETURN):
             return self.return_statement()
+        
+        if self._match(TokenType.BREAK): 
+            self._consume(TokenType.SEMICOLON, "Expected ';' after 'break'")
+            return BreakStmt()
+
+        if self._match(TokenType.CONTINUE):
+            self._consume(TokenType.SEMICOLON, "Expected ';' after 'continue'")
+            return ContinueStmt()
 
         if self._match(TokenType.IF):
             return self.if_statement()
@@ -141,9 +152,8 @@ class Parser(object):
 
         body = self.statement()
         if increment is not None:
-            body = BlockStmt(
-                [body, ExpressionStmt(increment)], dedicated_var_scope=False
-            )
+            body = ForBodyStmt(body, ExpressionStmt(increment))
+            
         if condition is None:
             condition = Literal(True)
         body = WhileStmt(condition, body)

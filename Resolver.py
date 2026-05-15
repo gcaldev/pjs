@@ -12,6 +12,9 @@ from Stmt import (
     IfStmt,
     WhileStmt,
     ReturnStmt,
+    ContinueStmt,
+    BreakStmt,
+    ForBodyStmt,
 )
 from Expressions import (
     Expressions,
@@ -238,11 +241,26 @@ class Resolver(object):
         self.resolve(statement.then_branch)
         if statement.else_branch is not None:
             self.resolve(statement.else_branch)
+    
+    @resolve.register
+    def _(self, statement: BreakStmt):
+        # break no tiene nada que resolver
+        return
+
+    @resolve.register
+    def _(self, statement: ContinueStmt):
+        # continue no tiene nada que resolver
+        return
 
     @resolve.register
     def _(self, statement: WhileStmt):
         self.resolve(statement.condition)
         self.resolve(statement.body)
+
+    @resolve.register
+    def _(self, statement: ForBodyStmt):
+        self.resolve(statement.body)
+        self.resolve(statement.increment)
 
     # ---------- Resolver Expresiones ---------- #
 

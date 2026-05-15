@@ -13,6 +13,11 @@ class ReturnValue(Exception):
         super().__init__(f"Return Value: {value}")
         self.value = value
 
+class BreakException(Exception):
+    pass
+
+class ContinueException(Exception):
+    pass
 
 class Function(object):
     def __init__(

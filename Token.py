@@ -35,6 +35,7 @@ class TokenType(Enum):
     ARROW_RIGHT = auto()
     EQUAL_EQUAL_EQUAL = auto()
     BANG_EQUAL_EQUAL = auto()
+    DOT = auto()
 
     # Literales
     IDENTIFIER = auto()
@@ -63,6 +64,8 @@ class TokenType(Enum):
     UNDEFINED = auto()
     NAN = auto()
     TYPEOF = auto()
+    BREAK = auto()
+    CONTINUE = auto()
 
     # Fin de archivo
     EOF = auto()
@@ -112,6 +115,8 @@ TokenKeywords = {
     "undefined": TokenType.UNDEFINED,
     "NaN": TokenType.NAN,
     "typeof": TokenType.TYPEOF,
+    "break": TokenType.BREAK,
+    "continue": TokenType.CONTINUE,
 }
 
 # Tokens que se pueden identificar con un solo caracter
@@ -125,6 +130,7 @@ SimpleTokens = {
     ";": TokenType.SEMICOLON,
     ":": TokenType.COLON,
     "%": TokenType.PERCENT,
+    ".": TokenType.DOT, 
 }
 
 # Tokens que para ser identificados necesitan mirar el siguiente caracter, como los operadores de dos caracteres

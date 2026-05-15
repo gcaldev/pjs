@@ -88,3 +88,31 @@ class WhileStmt(Stmt):
 
     def __repr__(self) -> str:
         return f"WHILE {self.condition} {self.body}"
+    
+
+class ForBodyStmt(Stmt):
+    """
+    Representa el cuerpo especial de un for loop.
+    Necesario para que continue() ejecute el increment ANTES de la siguiente iteración.
+    """
+    def __init__(self, body: Stmt, increment: Stmt):
+        self.body = body
+        self.increment = increment
+
+    def __repr__(self) -> str:
+        return f"ForBodyStmt({self.body}, {self.increment})"
+
+class BreakStmt(Stmt):
+    def __init__(self):
+        pass
+
+    def __repr__(self) -> str:
+        return "BREAK"
+
+
+class ContinueStmt(Stmt):
+    def __init__(self):
+        pass
+
+    def __repr__(self) -> str:
+        return "CONTINUE"

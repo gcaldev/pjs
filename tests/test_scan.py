@@ -320,10 +320,6 @@ def test_error_invalid_numbers():
         Scanner("1.").scan()
     assert "Invalid number" in str(excinfo.value)
 
-    with pytest.raises(Exception) as excinfo:
-        Scanner(".2").scan()
-    assert "Unexpected character" in str(excinfo.value)
-
 
 def test_scanner_plus_plus_token():
     tokens = Scanner("++").scan()

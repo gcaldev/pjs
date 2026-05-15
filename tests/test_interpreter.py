@@ -1,7 +1,11 @@
 import re
+import sys
 import pytest
 import math
+import os
 
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+    
 from Resolver import Resolver
 from Scanner import Scanner
 from Parser import Parser
