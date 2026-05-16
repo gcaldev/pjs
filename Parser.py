@@ -12,6 +12,7 @@ from Expressions import (
     Ternary,
     Postfix,
     FunctionExpr,
+    ArrayExpression,
 )
 from Stmt import (
     Stmt,
@@ -429,8 +430,20 @@ class Parser(object):
             self._consume(TokenType.RIGHT_PAREN, "Expect ')' after expression")
             return Grouping(expr)
 
+        if self._match(TokenType.LEFT_BRACKET):
+            elements = []
+            while not self._is_at_end() and not self._check(TokenType.RIGHT_BRACKET):
+                elements.append(self.expression())
+                if not self._match(TokenType.COMMA):
+                    break
+            
+            self._consume(TokenType.RIGHT_BRACKET, "Expect ']' after array elements")
+            return ArrayExpression(elements)
+        
         self._error("Expect expression")
         return None
+    
+    
 
     # ===== Helper methods =====
     def _make_plus_expr(self, left, right, line):

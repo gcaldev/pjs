@@ -29,6 +29,7 @@ from Expressions import (
     Ternary,
     Postfix,
     FunctionExpr,
+    ArrayExpression,
 )
 from Function import Function, ReturnValue, BreakException, ContinueException
 from Token import TokenType
@@ -501,6 +502,17 @@ class Interpreter(object):
         # devolvemos el valor viejo
         return oldvalue
 
+
+    @evaluate.register
+    def _(self, expression: ArrayExpression):
+        """
+        Evalúa cada elemento del array y devuelve una lista de Python.
+        
+        [1, 2, 3]        → [1, 2, 3]
+        [x, y + 1]       → [valor_x, valor_y + 1]
+        []               → []
+        """
+        return [self.evaluate(elem) for elem in expression.elements]
     # ---------- Helpers ---------- #
 
     # Devuelve si el valor es truthy (es decir, si evalua a verdadero)

@@ -29,6 +29,7 @@ from Expressions import (
     Ternary,
     Postfix,
     FunctionExpr,
+    ArrayExpression,
 )
 
 
@@ -347,3 +348,11 @@ class Resolver(object):
     @resolve.register
     def _(self, expression: FunctionExpr):
         self._resolve_function_body(expression.parameters, expression.body)
+
+    @resolve.register
+    def _(self, expression: ArrayExpression):
+        """
+        Resuelve todas las variables dentro del array.
+        """
+        for elem in expression.elements:
+            self.resolve(elem)

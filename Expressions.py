@@ -120,3 +120,16 @@ class FunctionExpr(Expressions):
         params = ", ".join(p.lexeme for p in self.parameters)
         name = self.name.lexeme if self.name else "(anonymous)"
         return f"FunctionExpr({name}({params}))"
+
+class ArrayExpression(Expressions):
+    """
+    Representa un array literal: [1, 2, 3]
+    
+    elements: list[Expressions] - los elementos del array
+    """
+    def __init__(self, elements: list["Expressions"]):
+        self.elements = elements
+
+    def __repr__(self) -> str:
+        elems = ", ".join(str(e) for e in self.elements)
+        return f"ArrayExpression([{elems}])"
