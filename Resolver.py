@@ -1,6 +1,6 @@
 from functools import singledispatchmethod
 
-from Token import TokenType
+from Token import TokenType, Token
 
 from Interpreter import Interpreter
 from Stmt import (
@@ -30,6 +30,7 @@ from Expressions import (
     Postfix,
     FunctionExpr,
     ArrayExpression,
+    MemberExpression,
 )
 
 
@@ -294,15 +295,22 @@ class Resolver(object):
     def _(self, expression: Assignment):
         value = self.resolve(expression.value)
 
-        # Agregamos al intérprete la profundidad del scope en la que
-        # se tiene que asignar el valor de la variable
-        for i, scope in enumerate(reversed(self.scopes)):
-            if expression.name.lexeme in scope:
-                self.interpreter.resolve_depth(expression, i)
-                return value
-
+        # Si es variable simple
+        if isinstance(expression.name_or_member, Token):
+            # Agregamos al intérprete la profundidad del scope en la que
+            # se tiene que asignar el valor de la variable
+            for i, scope in enumerate(reversed(self.scopes)):
+                if expression.name_or_member.lexeme in scope:
+                    self.interpreter.resolve_depth(expression, i)
+                    return value
+            return value
+        
+        # Si es member expression
+        if isinstance(expression.name_or_member, MemberExpression):
+            self.resolve(expression.name_or_member)
+        
         return value
-
+    
     @resolve.register
     def _(self, expression: Literal):
         # Los literales son lo más chico que hay en el lenguaje,
@@ -356,3 +364,11 @@ class Resolver(object):
         """
         for elem in expression.elements:
             self.resolve(elem)
+
+    @resolve.register
+    def _(self, expression: MemberExpression):
+        """
+        Resuelve variables en member access.
+        """
+        self.resolve(expression.object)
+        self.resolve(expression.property)

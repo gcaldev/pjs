@@ -13,6 +13,7 @@ from Expressions import (
     Postfix,
     FunctionExpr,
     ArrayExpression,
+    MemberExpression,
 )
 from Stmt import (
     Stmt,
@@ -219,10 +220,13 @@ class Parser(object):
         expr = self.conditional()
         if self._match(TokenType.EQUAL):
             value = self.assignment()
-            if not isinstance(expr, Variable):
-                self._error("Invalid assignment target")
-                return expr
-            return Assignment(expr.name, value)
+            if isinstance(expr, Variable):
+                return Assignment(expr.name, value)
+            # Ahora lo que hago es permitir asignación a member expressions
+            if isinstance(expr, MemberExpression):
+                return Assignment(expr, value)  # La "asignación" guarda la MemberExpression
+            self._error("Invalid assignment target")
+            return expr
 
         return expr
 
@@ -372,15 +376,40 @@ class Parser(object):
     def call(self):
         expr = self.primary()
 
-        while self._match(TokenType.LEFT_PAREN):
-            arguments = []
-            while not self._is_at_end() and not self._check(TokenType.RIGHT_PAREN):
-                arguments.append(self.expression())
-                if not self._match(TokenType.COMMA):
-                    break
+        while True:
+            # Maneja member access con dot notation: obj.prop
+            if self._match(TokenType.DOT):
+                if not self._match(TokenType.IDENTIFIER):
+                    self._error("Expected property name after '.'")
+                    prop_name = self._previous()
+                else:
+                    prop_name = self._previous()
+                # Convierte obj.prop a MemberExpression(obj, "prop", computed=False)
+                expr = MemberExpression(
+                    expr,
+                    Literal(prop_name.lexeme),  # La propiedad como string
+                    computed=False
+                )
+            
+            # Maneja member access con bracket notation: arr[expr]
+            elif self._match(TokenType.LEFT_BRACKET):
+                index = self.expression()
+                self._consume(TokenType.RIGHT_BRACKET, "Expect ']' after computed member expression")
+                expr = MemberExpression(expr, index, computed=True)
+            
+            # Maneja function calls: func() Este es el original que habia
+            elif self._match(TokenType.LEFT_PAREN):
+                arguments = []
+                while not self._is_at_end() and not self._check(TokenType.RIGHT_PAREN):
+                    arguments.append(self.expression())
+                    if not self._match(TokenType.COMMA):
+                        break
 
-            self._consume(TokenType.RIGHT_PAREN, "Expect ')' after function arguments")
-            expr = Call(expr, arguments)
+                self._consume(TokenType.RIGHT_PAREN, "Expect ')' after function arguments")
+                expr = Call(expr, arguments)
+            
+            else:
+                break
 
         return expr
 

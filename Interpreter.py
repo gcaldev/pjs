@@ -1,5 +1,6 @@
 from functools import singledispatchmethod
 from typing import Union, cast
+from Token import Token
 
 from Stmt import (
     Stmt,
@@ -30,6 +31,7 @@ from Expressions import (
     Postfix,
     FunctionExpr,
     ArrayExpression,
+    MemberExpression,
 )
 from Function import Function, ReturnValue, BreakException, ContinueException
 from Token import TokenType
@@ -408,15 +410,47 @@ class Interpreter(object):
     def _(self, expression: Assignment):
         value = self.evaluate(expression.value)
 
-        # Si la variable se encuentra en nuestro diccionario de scope local,
-        # la asignamos en esa profundidad.
-        if expression in self.local_scope_depths:
-            depth = self.local_scope_depths[expression]
-            self.env.assign(expression.name.lexeme, value, depth)
+        # Si es asignación a variable
+        if isinstance(expression.name_or_member, Token):
+            name = expression.name_or_member
+            # Si la variable se encuentra en nuestro diccionario de scope local,
+            # la asignamos en esa profundidad.
+            if expression in self.local_scope_depths:
+                depth = self.local_scope_depths[expression]
+                self.env.assign(name.lexeme, value, depth)
+                return value
+            # Si no, la asignamos en el entorno global
+            self.globals.assign(name.lexeme, value)
             return value
-
-        # Si no, la asignamos en el entorno global
-        self.globals.assign(expression.name.lexeme, value)
+        
+        # Si es asignación a member expression (arr[0] = x o obj.prop = x)
+        if isinstance(expression.name_or_member, MemberExpression):
+            member = expression.name_or_member
+            obj = self.evaluate(member.object)
+            
+            if member.computed:
+                # arr[0] = value
+                prop = self.evaluate(member.property)
+                if isinstance(obj, list):
+                    idx = int(self.to_number(prop))
+                    # Extiende el array si es necesario
+                    while len(obj) <= idx:
+                        obj.append(UNDEFINED)
+                    obj[idx] = value
+                    return value
+                if isinstance(obj, dict):
+                    key = str(prop) if not isinstance(prop, str) else prop
+                    obj[key] = value
+                    return value
+            else:
+                # obj.prop = value
+                prop_name = member.property.value if isinstance(member.property, Literal) else str(member.property)
+                if isinstance(obj, dict):
+                    obj[prop_name] = value
+                    return value
+            
+            return value
+        
         return value
 
     @evaluate.register
@@ -513,6 +547,61 @@ class Interpreter(object):
         []               → []
         """
         return [self.evaluate(elem) for elem in expression.elements]
+    
+    
+    @evaluate.register
+    def _(self, expression: MemberExpression):
+        """
+        Evalúa acceso a miembro: arr[0], obj.prop, etc.
+        """
+        obj = self.evaluate(expression.object)
+        
+        if expression.computed:
+            # arr[0], arr[expr] → bracket notation
+            prop = self.evaluate(expression.property)
+            
+            # Para arrays (listas en Python)
+            if isinstance(obj, list):
+                idx = int(self.to_number(prop))
+                if 0 <= idx < len(obj):
+                    return obj[idx]
+                return UNDEFINED  # En JS, acceso fuera de bounds devuelve undefined
+            
+            # Para objetos (dicts en Python)
+            if isinstance(obj, dict):
+                key = str(prop) if not isinstance(prop, str) else prop
+                return obj.get(key, UNDEFINED)
+            
+            # Para strings
+            if isinstance(obj, str):
+                idx = int(self.to_number(prop))
+                if 0 <= idx < len(obj):
+                    return obj[idx]
+                return UNDEFINED
+            
+            return UNDEFINED
+        else:
+            # obj.prop → dot notation
+            # La propiedad es siempre un string en dot notation
+            prop_name = expression.property.value if isinstance(expression.property, Literal) else str(expression.property)
+            
+            # Para arrays: propiedades especiales como .length
+            if isinstance(obj, list):
+                if prop_name == "length":
+                    return len(obj)
+                return UNDEFINED
+            
+            # Para strings: propiedades especiales como .length
+            if isinstance(obj, str):
+                if prop_name == "length":
+                    return len(obj)
+                return UNDEFINED
+            
+            # Para objetos (dicts)
+            if isinstance(obj, dict):
+                return obj.get(prop_name, UNDEFINED)
+            
+            return UNDEFINED
     # ---------- Helpers ---------- #
 
     # Devuelve si el valor es truthy (es decir, si evalua a verdadero)

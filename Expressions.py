@@ -68,12 +68,16 @@ class Variable(Expressions):
 
 
 class Assignment(Expressions):
-    def __init__(self, name: Token, value: Expressions):
-        self.name = name
+    def __init__(self, name_or_member, value: Expressions):
+        self.name_or_member = name_or_member  # Puede ser Token o MemberExpression
         self.value = value
+        # Para compatibilidad con código viejo, pq puede ser Token o Member
+        self.name = name_or_member if isinstance(name_or_member, Token) else None
 
     def __repr__(self) -> str:
-        return f"Assignment({self.name.lexeme}, {self.value})"
+        if isinstance(self.name_or_member, Token):
+            return f"Assignment({self.name_or_member.lexeme}, {self.value})"
+        return f"Assignment({self.name_or_member}, {self.value})"
 
 
 class Logic(Expressions):
@@ -133,3 +137,28 @@ class ArrayExpression(Expressions):
     def __repr__(self) -> str:
         elems = ", ".join(str(e) for e in self.elements)
         return f"ArrayExpression([{elems}])"
+    
+
+class MemberExpression(Expressions):
+    """
+    Representa acceso a miembro: arr[0], obj.prop, obj[expr]
+    
+    object: Expressions - el objeto/array del cual accedemos
+    property: Expressions - la propiedad (para bracket notation)
+    computed: bool - True si es bracket notation [expr], False si es dot notation .prop
+    
+    Ejemplos:
+        arr[0]          → MemberExpression(Variable(arr), Literal(0), computed=True)
+        obj.name        → MemberExpression(Variable(obj), Literal("name"), computed=False)
+        obj[key]        → MemberExpression(Variable(obj), Variable(key), computed=True)
+        arr[i + 1]      → MemberExpression(Variable(arr), Binary(...), computed=True)
+    """
+    def __init__(self, object: Expressions, property: Expressions, computed: bool):
+        self.object = object
+        self.property = property
+        self.computed = computed
+
+    def __repr__(self) -> str:
+        if self.computed:
+            return f"MemberExpression({self.object}[{self.property}])"
+        return f"MemberExpression({self.object}.{self.property})"
