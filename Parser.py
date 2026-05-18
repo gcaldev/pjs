@@ -14,6 +14,7 @@ from Expressions import (
     FunctionExpr,
     ArrayExpression,
     MemberExpression,
+    ObjectLiteral,
 )
 from Stmt import (
     Stmt,
@@ -71,8 +72,35 @@ class Parser(object):
         if self._match(TokenType.FOR):
             return self.for_statement()
 
-        if self._match(TokenType.LEFT_BRACE):
-            return self.block_statement()
+        # Para hacer retrocompatible este metodo
+        # Lookahead para diferenciar entre block { ... } 
+        # y object literal { key: value }
+        if self._check(TokenType.LEFT_BRACE):
+            saved_pos = self.current
+            self._advance()  # consume {
+            
+            is_object_literal = False
+            
+            # Si está vacío: {} - es un bloque vacío por defecto
+            if self._check(TokenType.RIGHT_BRACE):
+                is_object_literal = False
+            # Si empieza con algo que parece una propiedad: IDENTIFIER/STRING/NUMBER seguido de :
+            elif self._check(TokenType.IDENTIFIER) or self._check(TokenType.STRING) or self._check(TokenType.NUMBER):
+                self._advance()  # avanza para mirar el siguiente token
+                if self._check(TokenType.COLON):
+                    # Es un object literal: {key: ...}
+                    is_object_literal = True
+            
+            # Restaura la posición original
+            self.current = saved_pos
+            
+            if is_object_literal:
+                # Parsea como expression statement (que parseará el object literal)
+                return self.expression_statement()
+            else:
+                # Parsea como block statement
+                self._advance()  # consume {
+                return self.block_statement()
 
         if self._match(TokenType.RETURN):
             return self.return_statement()
@@ -81,14 +109,11 @@ class Parser(object):
 
     def expression_statement(self) -> ExpressionStmt:
         expr = self.expression()
-
-        if not self._match(TokenType.SEMICOLON):
-            if not self._is_at_end() and not self._check(TokenType.RIGHT_BRACE):
-                self._error("Expected ';' after expression")
-                while not self._is_at_end() and not self._check(TokenType.SEMICOLON):
-                    self._advance()
-                if self._check(TokenType.SEMICOLON):
-                    self._advance()
+        
+        # Semicolon es opcional (ASI - Automatic Semicolon Insertion)
+        # Igual que JavaScript real
+        self._match(TokenType.SEMICOLON)
+        
         return ExpressionStmt(expr)
 
     def block_statement(self) -> BlockStmt:
@@ -468,11 +493,52 @@ class Parser(object):
             
             self._consume(TokenType.RIGHT_BRACKET, "Expect ']' after array elements")
             return ArrayExpression(elements)
+            
+        if self._match(TokenType.LEFT_BRACE):
+            properties = []
+            
+            # Si es {} vacío, retorna inmediatamente
+            if self._check(TokenType.RIGHT_BRACE):
+                self._advance()
+                return ObjectLiteral(properties)
+            
+            # Parsea pares key: value
+            while not self._is_at_end() and not self._check(TokenType.RIGHT_BRACE):
+                # La clave puede ser:
+                # 1. IDENTIFIER (sin comillas): {a: 1}
+                # 2. STRING: {"name": "Julian"}
+                # 3. NUMBER: {1: "one"}
+                
+                if self._match(TokenType.IDENTIFIER):
+                    key = self._previous().lexeme
+                elif self._match(TokenType.STRING):
+                    key = self._previous().literal
+                elif self._match(TokenType.NUMBER):
+                    key = str(int(self._previous().literal))
+                else:
+                    self._error("Expected property name")
+                    break
+                
+                # Espera el ':'
+                if not self._match(TokenType.COLON):
+                    self._error("Expected ':' after property name")
+                    break
+                
+                # Parsea el valor (puede ser cualquier expresión)
+                value = self.expression()
+                properties.append((key, value))
+                
+                # Si no hay coma, sale del loop
+                if not self._match(TokenType.COMMA):
+                    break
+            
+            if not self._match(TokenType.RIGHT_BRACE):
+                self._error("Expected '}' after object properties")
+            
+            return ObjectLiteral(properties)
         
         self._error("Expect expression")
         return None
-    
-    
 
     # ===== Helper methods =====
     def _make_plus_expr(self, left, right, line):

@@ -134,7 +134,7 @@ SimpleTokens = {
     "%": TokenType.PERCENT,
     ".": TokenType.DOT, 
     "[": TokenType.LEFT_BRACKET,
-    "]": TokenType.RIGHT_BRACKET
+    "]": TokenType.RIGHT_BRACKET,
 }
 
 # Tokens que para ser identificados necesitan mirar el siguiente caracter, como los operadores de dos caracteres

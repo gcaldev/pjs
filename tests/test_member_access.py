@@ -108,6 +108,44 @@ class TestArrayMemberAccess:
         sum;
         """
         assert execute_js(code) == 60
+class TestObjectAndArrayCombined:
+    """Tests combinando arrays y objetos"""
+    
+    def test_array_of_objects(self, execute_js):
+        """Array de objetos"""
+        code = """
+        var users = [
+            {name: "Julian", age: 25},
+            {name: "Carlos", age: 30}
+        ];
+        users[0].name;
+        """
+        assert execute_js(code) == "Julian"
+    
+    def test_object_with_array_property(self, execute_js):
+        """Objeto con propiedad que es array"""
+        code = """
+        var data = {
+            values: [1, 2, 3],
+            label: "numbers"
+        };
+        data.values[1];
+        """
+        assert execute_js(code) == 2
+    
+    def test_mixed_access_chains(self, execute_js):
+        """Cadenas complejas de acceso"""
+        code = """
+        var data = {
+            items: [
+                {value: 10},
+                {value: 20}
+            ]
+        };
+        data.items[1].value;
+        """
+        assert execute_js(code) == 20
+
 
 class TestMemberAccessEdgeCases:
     """Tests para casos edge"""

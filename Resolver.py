@@ -31,6 +31,7 @@ from Expressions import (
     FunctionExpr,
     ArrayExpression,
     MemberExpression,
+    ObjectLiteral,
 )
 
 
@@ -372,3 +373,11 @@ class Resolver(object):
         """
         self.resolve(expression.object)
         self.resolve(expression.property)
+        
+    @resolve.register
+    def _(self, expression: ObjectLiteral):
+        """
+        Resuelve todas las variables dentro del object literal.
+        """
+        for key, value_expr in expression.properties:
+            self.resolve(value_expr)

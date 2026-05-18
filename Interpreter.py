@@ -32,6 +32,7 @@ from Expressions import (
     FunctionExpr,
     ArrayExpression,
     MemberExpression,
+    ObjectLiteral,
 )
 from Function import Function, ReturnValue, BreakException, ContinueException
 from Token import TokenType
@@ -602,6 +603,21 @@ class Interpreter(object):
                 return obj.get(prop_name, UNDEFINED)
             
             return UNDEFINED
+        
+    @evaluate.register
+    def _(self, expression: ObjectLiteral):
+        """
+        Evalúa un object literal y devuelve un diccionario de Python.
+        
+        {a: 1, b: 2}        → {"a": 1, "b": 2}
+        {x: y + 1}          → {"x": valor_y + 1}
+        {a: {b: 1}}         → {"a": {"b": 1}}
+        """
+        obj = {}
+        for key, value_expr in expression.properties:
+            obj[key] = self.evaluate(value_expr)
+        return obj
+    
     # ---------- Helpers ---------- #
 
     # Devuelve si el valor es truthy (es decir, si evalua a verdadero)

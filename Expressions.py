@@ -162,3 +162,21 @@ class MemberExpression(Expressions):
         if self.computed:
             return f"MemberExpression({self.object}[{self.property}])"
         return f"MemberExpression({self.object}.{self.property})"
+    
+class ObjectLiteral(Expressions):
+    """
+    Representa un object literal: {a: 1, b: 2}
+    
+    properties: list[tuple(str, Expressions)] - lista de (clave, valor)
+    
+    Ejemplos:
+        {a: 1, b: 2}        → ObjectLiteral([("a", Literal(1)), ("b", Literal(2))])
+        {x: y + 1}          → ObjectLiteral([("x", Binary(...))])
+        {a: 1, b: {c: 2}}   → ObjectLiteral([("a", Literal(1)), ("b", ObjectLiteral(...))])
+    """
+    def __init__(self, properties: list[tuple[str, "Expressions"]]):
+        self.properties = properties
+
+    def __repr__(self) -> str:
+        props = ", ".join(f"{key}: {value}" for key, value in self.properties)
+        return f"ObjectLiteral({{{props}}})"
