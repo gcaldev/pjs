@@ -45,6 +45,8 @@ class Scanner(object):
     def scan_token(self):
         c = self._advance()
         match c:
+            case "/":
+                self._handle_slash()
             case _ if c in ComplexTokensFirstCharacter:
                 self._handle_complex_token()
             case _ if c in SimpleTokens:
@@ -53,8 +55,6 @@ class Scanner(object):
                 pass
             case "\n":
                 self.line += 1
-            case "/":
-                self._handle_slash()
             case "'" | '"':
                 self._handle_string(delimiter=c)
             case "`":
@@ -102,24 +102,28 @@ class Scanner(object):
                 self._advance()
             return
 
-        if not self._match("*"):
-            self.add_token(TokenType.SLASH)
+        if self._match("*"):
+                level = 1
+                while level > 0 and not self._is_at_end():
+                    if self._match("\n"):
+                        self.line += 1
+                        continue
+                    if self._match("*") and self._match("/"):
+                        level -= 1
+                        continue
+                    if self._match("/") and self._match("*"):
+                        level += 1
+                        continue
+                    self._advance()
+                if level > 0:
+                    raise Exception(f"Unterminated comment: `{self.lexeme()}`")
+                return
+            
+        if self._match("="):
+            self.add_token(TokenType.SLASH_EQUAL)
             return
-
-        level = 1
-        while level > 0 and not self._is_at_end():
-            if self._match("\n"):
-                self.line += 1
-                continue
-            if self._match("*") and self._match("/"):
-                level -= 1
-                continue
-            if self._match("/") and self._match("*"):
-                level += 1
-                continue
-            self._advance()
-        if level > 0:
-            raise Exception(f"Unterminated comment: `{self.lexeme()}`")
+        
+        self.add_token(TokenType.SLASH)
 
     def _handle_string(self, delimiter: str):
         while not self._is_at_end():

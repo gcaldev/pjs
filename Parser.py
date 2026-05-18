@@ -397,7 +397,62 @@ class Parser(object):
             expr = Postfix(expr, plus_plus_token)
 
         return expr
+    
+    def assignment(self):
+        expr = self.conditional()
+        
+        if self._match(TokenType.EQUAL):
+            value = self.assignment()
+            if isinstance(expr, Variable):
+                return Assignment(expr.name, value)
+            if isinstance(expr, MemberExpression):
+                return Assignment(expr, value)
+            self._error("Invalid assignment target")
+            return expr
+        
+        # Manejar compound assignment operators
+        if self._match(
+            TokenType.PLUS_EQUAL,
+            TokenType.MINUS_EQUAL,
+            TokenType.STAR_EQUAL,
+            TokenType.SLASH_EQUAL,
+            TokenType.PERCENT_EQUAL,
+        ):
+            operator = self._previous()
+            value = self.assignment()
+            
+            # Convertir += a +, -= a -, etc.
+            binary_op_type = self._get_binary_operator_from_compound(operator.token_type)
+            binary_operator = Token(
+                binary_op_type,
+                lexeme=operator.lexeme[:-1],  # Remover el '='
+                literal=None,
+                line=operator.line,
+            )
+            
+            # x += 5 se convierte en x = x + 5
+            if isinstance(expr, Variable):
+                binary_expr = Binary(expr, binary_operator, value)
+                return Assignment(expr.name, binary_expr)
+            if isinstance(expr, MemberExpression):
+                binary_expr = Binary(expr, binary_operator, value)
+                return Assignment(expr, binary_expr)
+            
+            self._error("Invalid assignment target")
+            return expr
+        
+        return expr
 
+    def _get_binary_operator_from_compound(self, compound_op: TokenType) -> TokenType:
+        """Convierte un compound assignment operator a su operador binario equivalente"""
+        mapping = {
+            TokenType.PLUS_EQUAL: TokenType.PLUS,
+            TokenType.MINUS_EQUAL: TokenType.MINUS,
+            TokenType.STAR_EQUAL: TokenType.STAR,
+            TokenType.SLASH_EQUAL: TokenType.SLASH,
+            TokenType.PERCENT_EQUAL: TokenType.PERCENT,
+        }
+        return mapping.get(compound_op, TokenType.PLUS)
     def call(self):
         expr = self.primary()
 

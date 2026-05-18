@@ -38,6 +38,11 @@ class TokenType(Enum):
     EQUAL_EQUAL_EQUAL = auto()
     BANG_EQUAL_EQUAL = auto()
     DOT = auto()
+    PLUS_EQUAL = auto()
+    MINUS_EQUAL = auto()
+    STAR_EQUAL = auto()
+    SLASH_EQUAL = auto()
+    PERCENT_EQUAL = auto()
 
     # Literales
     IDENTIFIER = auto()
@@ -146,10 +151,18 @@ ComplexTokens = {
     "!=": TokenType.BANG_EQUAL,
     "!": TokenType.BANG,
     "++": TokenType.PLUS_PLUS,
+    "+=": TokenType.PLUS_EQUAL,
     "+": TokenType.PLUS,
     "--": TokenType.MINUS_MINUS,
+    "-=": TokenType.MINUS_EQUAL,
     "-": TokenType.MINUS,
     "*": TokenType.STAR,
+    "*=": TokenType.STAR_EQUAL,
+    "*": TokenType.STAR,
+    "/=": TokenType.SLASH_EQUAL,
+    "/": TokenType.SLASH,
+    "%=": TokenType.PERCENT_EQUAL,
+    "%": TokenType.PERCENT,
     "=>": TokenType.ARROW_RIGHT,
     "<=": TokenType.LESS_EQUAL,
     "<": TokenType.LESS,
