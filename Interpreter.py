@@ -545,10 +545,6 @@ class Interpreter(object):
     def _(self, expression: ArrayExpression):
         """
         Evalúa cada elemento del array y devuelve una lista de Python.
-
-        [1, 2, 3]        → [1, 2, 3]
-        [x, y + 1]       → [valor_x, valor_y + 1]
-        []               → []
         """
         return [self.evaluate(elem) for elem in expression.elements]
 
@@ -560,22 +556,18 @@ class Interpreter(object):
         obj = self.evaluate(expression.object)
 
         if expression.computed:
-            # arr[0], arr[expr] → bracket notation
             prop = self.evaluate(expression.property)
 
-            # Para arrays (listas en Python)
             if isinstance(obj, list):
                 idx = int(self.to_number(prop))
                 if 0 <= idx < len(obj):
                     return obj[idx]
                 return UNDEFINED  # En JS, acceso fuera de bounds devuelve undefined
 
-            # Para objetos (dicts en Python)
             if isinstance(obj, dict):
                 key = str(prop) if not isinstance(prop, str) else prop
                 return obj.get(key, UNDEFINED)
 
-            # Para strings
             if isinstance(obj, str):
                 idx = int(self.to_number(prop))
                 if 0 <= idx < len(obj):
@@ -584,27 +576,22 @@ class Interpreter(object):
 
             return UNDEFINED
         else:
-            # obj.prop → dot notation
-            # La propiedad es siempre un string en dot notation
             prop_name = (
                 expression.property.value
                 if isinstance(expression.property, Literal)
                 else str(expression.property)
             )
 
-            # Para arrays: propiedades especiales como .length
             if isinstance(obj, list):
                 if prop_name == "length":
                     return len(obj)
                 return UNDEFINED
 
-            # Para strings: propiedades especiales como .length
             if isinstance(obj, str):
                 if prop_name == "length":
                     return len(obj)
                 return UNDEFINED
 
-            # Para objetos (dicts)
             if isinstance(obj, dict):
                 return obj.get(prop_name, UNDEFINED)
 
@@ -614,10 +601,6 @@ class Interpreter(object):
     def _(self, expression: ObjectLiteral):
         """
         Evalúa un object literal y devuelve un diccionario de Python.
-
-        {a: 1, b: 2}        → {"a": 1, "b": 2}
-        {x: y + 1}          → {"x": valor_y + 1}
-        {a: {b: 1}}         → {"a": {"b": 1}}
         """
         obj = {}
         for key, value_expr in expression.properties:

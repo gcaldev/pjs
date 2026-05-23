@@ -148,12 +148,6 @@ class MemberExpression(Expressions):
     object: Expressions - el objeto/array del cual accedemos
     property: Expressions - la propiedad (para bracket notation)
     computed: bool - True si es bracket notation [expr], False si es dot notation .prop
-
-    Ejemplos:
-        arr[0]          → MemberExpression(Variable(arr), Literal(0), computed=True)
-        obj.name        → MemberExpression(Variable(obj), Literal("name"), computed=False)
-        obj[key]        → MemberExpression(Variable(obj), Variable(key), computed=True)
-        arr[i + 1]      → MemberExpression(Variable(arr), Binary(...), computed=True)
     """
 
     def __init__(self, object: Expressions, property: Expressions, computed: bool):
@@ -172,11 +166,6 @@ class ObjectLiteral(Expressions):
     Representa un object literal: {a: 1, b: 2}
 
     properties: list[tuple(str, Expressions)] - lista de (clave, valor)
-
-    Ejemplos:
-        {a: 1, b: 2}        → ObjectLiteral([("a", Literal(1)), ("b", Literal(2))])
-        {x: y + 1}          → ObjectLiteral([("x", Binary(...))])
-        {a: 1, b: {c: 2}}   → ObjectLiteral([("a", Literal(1)), ("b", ObjectLiteral(...))])
     """
 
     def __init__(self, properties: list[tuple[str, "Expressions"]]):
