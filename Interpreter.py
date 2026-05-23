@@ -152,7 +152,7 @@ class Interpreter(object):
             returnvalue = self.evaluate(statement.value)
 
         raise ReturnValue(returnvalue)
-    
+
     @execute.register
     def _(self, statement: BreakStmt):
         raise BreakException()
@@ -160,7 +160,7 @@ class Interpreter(object):
     @execute.register
     def _(self, statement: ContinueStmt):
         raise ContinueException()
-    
+
     @execute.register
     def _(self, statement: IfStmt):
         # El if se implementa con... un if
@@ -181,7 +181,7 @@ class Interpreter(object):
                 continue
             except BreakException:
                 break
-            
+
     @execute.register
     def _(self, statement: ForBodyStmt):
         """
@@ -423,12 +423,12 @@ class Interpreter(object):
             # Si no, la asignamos en el entorno global
             self.globals.assign(name.lexeme, value)
             return value
-        
+
         # Si es asignación a member expression (arr[0] = x o obj.prop = x)
         if isinstance(expression.name_or_member, MemberExpression):
             member = expression.name_or_member
             obj = self.evaluate(member.object)
-            
+
             if member.computed:
                 # arr[0] = value
                 prop = self.evaluate(member.property)
@@ -445,13 +445,17 @@ class Interpreter(object):
                     return value
             else:
                 # obj.prop = value
-                prop_name = member.property.value if isinstance(member.property, Literal) else str(member.property)
+                prop_name = (
+                    member.property.value
+                    if isinstance(member.property, Literal)
+                    else str(member.property)
+                )
                 if isinstance(obj, dict):
                     obj[prop_name] = value
                     return value
-            
+
             return value
-        
+
         return value
 
     @evaluate.register
@@ -537,78 +541,80 @@ class Interpreter(object):
         # devolvemos el valor viejo
         return oldvalue
 
-
     @evaluate.register
     def _(self, expression: ArrayExpression):
         """
         Evalúa cada elemento del array y devuelve una lista de Python.
-        
+
         [1, 2, 3]        → [1, 2, 3]
         [x, y + 1]       → [valor_x, valor_y + 1]
         []               → []
         """
         return [self.evaluate(elem) for elem in expression.elements]
-    
-    
+
     @evaluate.register
     def _(self, expression: MemberExpression):
         """
         Evalúa acceso a miembro: arr[0], obj.prop, etc.
         """
         obj = self.evaluate(expression.object)
-        
+
         if expression.computed:
             # arr[0], arr[expr] → bracket notation
             prop = self.evaluate(expression.property)
-            
+
             # Para arrays (listas en Python)
             if isinstance(obj, list):
                 idx = int(self.to_number(prop))
                 if 0 <= idx < len(obj):
                     return obj[idx]
                 return UNDEFINED  # En JS, acceso fuera de bounds devuelve undefined
-            
+
             # Para objetos (dicts en Python)
             if isinstance(obj, dict):
                 key = str(prop) if not isinstance(prop, str) else prop
                 return obj.get(key, UNDEFINED)
-            
+
             # Para strings
             if isinstance(obj, str):
                 idx = int(self.to_number(prop))
                 if 0 <= idx < len(obj):
                     return obj[idx]
                 return UNDEFINED
-            
+
             return UNDEFINED
         else:
             # obj.prop → dot notation
             # La propiedad es siempre un string en dot notation
-            prop_name = expression.property.value if isinstance(expression.property, Literal) else str(expression.property)
-            
+            prop_name = (
+                expression.property.value
+                if isinstance(expression.property, Literal)
+                else str(expression.property)
+            )
+
             # Para arrays: propiedades especiales como .length
             if isinstance(obj, list):
                 if prop_name == "length":
                     return len(obj)
                 return UNDEFINED
-            
+
             # Para strings: propiedades especiales como .length
             if isinstance(obj, str):
                 if prop_name == "length":
                     return len(obj)
                 return UNDEFINED
-            
+
             # Para objetos (dicts)
             if isinstance(obj, dict):
                 return obj.get(prop_name, UNDEFINED)
-            
+
             return UNDEFINED
-        
+
     @evaluate.register
     def _(self, expression: ObjectLiteral):
         """
         Evalúa un object literal y devuelve un diccionario de Python.
-        
+
         {a: 1, b: 2}        → {"a": 1, "b": 2}
         {x: y + 1}          → {"x": valor_y + 1}
         {a: {b: 1}}         → {"a": {"b": 1}}
@@ -617,7 +623,7 @@ class Interpreter(object):
         for key, value_expr in expression.properties:
             obj[key] = self.evaluate(value_expr)
         return obj
-    
+
     # ---------- Helpers ---------- #
 
     # Devuelve si el valor es truthy (es decir, si evalua a verdadero)

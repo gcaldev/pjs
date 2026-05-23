@@ -125,34 +125,37 @@ class FunctionExpr(Expressions):
         name = self.name.lexeme if self.name else "(anonymous)"
         return f"FunctionExpr({name}({params}))"
 
+
 class ArrayExpression(Expressions):
     """
     Representa un array literal: [1, 2, 3]
-    
+
     elements: list[Expressions] - los elementos del array
     """
+
     def __init__(self, elements: list["Expressions"]):
         self.elements = elements
 
     def __repr__(self) -> str:
         elems = ", ".join(str(e) for e in self.elements)
         return f"ArrayExpression([{elems}])"
-    
+
 
 class MemberExpression(Expressions):
     """
     Representa acceso a miembro: arr[0], obj.prop, obj[expr]
-    
+
     object: Expressions - el objeto/array del cual accedemos
     property: Expressions - la propiedad (para bracket notation)
     computed: bool - True si es bracket notation [expr], False si es dot notation .prop
-    
+
     Ejemplos:
         arr[0]          → MemberExpression(Variable(arr), Literal(0), computed=True)
         obj.name        → MemberExpression(Variable(obj), Literal("name"), computed=False)
         obj[key]        → MemberExpression(Variable(obj), Variable(key), computed=True)
         arr[i + 1]      → MemberExpression(Variable(arr), Binary(...), computed=True)
     """
+
     def __init__(self, object: Expressions, property: Expressions, computed: bool):
         self.object = object
         self.property = property
@@ -162,18 +165,20 @@ class MemberExpression(Expressions):
         if self.computed:
             return f"MemberExpression({self.object}[{self.property}])"
         return f"MemberExpression({self.object}.{self.property})"
-    
+
+
 class ObjectLiteral(Expressions):
     """
     Representa un object literal: {a: 1, b: 2}
-    
+
     properties: list[tuple(str, Expressions)] - lista de (clave, valor)
-    
+
     Ejemplos:
         {a: 1, b: 2}        → ObjectLiteral([("a", Literal(1)), ("b", Literal(2))])
         {x: y + 1}          → ObjectLiteral([("x", Binary(...))])
         {a: 1, b: {c: 2}}   → ObjectLiteral([("a", Literal(1)), ("b", ObjectLiteral(...))])
     """
+
     def __init__(self, properties: list[tuple[str, "Expressions"]]):
         self.properties = properties
 

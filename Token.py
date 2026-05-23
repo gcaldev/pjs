@@ -16,7 +16,7 @@ class TokenType(Enum):
     STAR = auto()
     PERCENT = auto()
     LEFT_BRACKET = auto()
-    RIGHT_BRACKET = auto() 
+    RIGHT_BRACKET = auto()
 
     # Tokens de uno o mas caracteres
     SLASH = auto()
@@ -137,7 +137,7 @@ SimpleTokens = {
     ";": TokenType.SEMICOLON,
     ":": TokenType.COLON,
     "%": TokenType.PERCENT,
-    ".": TokenType.DOT, 
+    ".": TokenType.DOT,
     "[": TokenType.LEFT_BRACKET,
     "]": TokenType.RIGHT_BRACKET,
 }

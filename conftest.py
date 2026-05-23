@@ -16,18 +16,19 @@ def execute_js():
     """
     Fixture que ejecuta código JavaScript y retorna el resultado.
     """
+
     def _execute(code: str):
         interpreter = Interpreter()
         scanner = Scanner(code)
         tokens = scanner.scan()
         parser = Parser(tokens)
         stmts = parser.parse()
-        
+
         resolver = Resolver(interpreter)
         for stmt in stmts:
             resolver.resolve(stmt)
-        
+
         result = interpreter.interpret(stmts, as_js_repr=False)
         return result
-    
+
     return _execute

@@ -244,7 +244,7 @@ class Resolver(object):
         self.resolve(statement.then_branch)
         if statement.else_branch is not None:
             self.resolve(statement.else_branch)
-    
+
     @resolve.register
     def _(self, statement: BreakStmt):
         # break no tiene nada que resolver
@@ -305,13 +305,13 @@ class Resolver(object):
                     self.interpreter.resolve_depth(expression, i)
                     return value
             return value
-        
+
         # Si es member expression
         if isinstance(expression.name_or_member, MemberExpression):
             self.resolve(expression.name_or_member)
-        
+
         return value
-    
+
     @resolve.register
     def _(self, expression: Literal):
         # Los literales son lo más chico que hay en el lenguaje,
@@ -373,7 +373,7 @@ class Resolver(object):
         """
         self.resolve(expression.object)
         self.resolve(expression.property)
-        
+
     @resolve.register
     def _(self, expression: ObjectLiteral):
         """

@@ -4,7 +4,7 @@ from JSValues import UNDEFINED
 
 class TestCompoundAssignmentOperators:
     """Tests para operadores de asignación compuesta"""
-    
+
     def test_plus_equal_basic(self, execute_js):
         """Prueba += básico"""
         code = """
@@ -13,7 +13,7 @@ class TestCompoundAssignmentOperators:
         x;
         """
         assert execute_js(code) == 8
-    
+
     def test_minus_equal_basic(self, execute_js):
         """Prueba -= básico"""
         code = """
@@ -22,7 +22,7 @@ class TestCompoundAssignmentOperators:
         x;
         """
         assert execute_js(code) == 6
-    
+
     def test_star_equal_basic(self, execute_js):
         """Prueba *= básico"""
         code = """
@@ -31,7 +31,7 @@ class TestCompoundAssignmentOperators:
         x;
         """
         assert execute_js(code) == 12
-    
+
     def test_slash_equal_basic(self, execute_js):
         """Prueba /= básico"""
         code = """
@@ -40,7 +40,7 @@ class TestCompoundAssignmentOperators:
         x;
         """
         assert execute_js(code) == 5
-    
+
     def test_percent_equal_basic(self, execute_js):
         """Prueba %= básico"""
         code = """
@@ -49,7 +49,7 @@ class TestCompoundAssignmentOperators:
         x;
         """
         assert execute_js(code) == 2
-    
+
     def test_plus_equal_string_concatenation(self, execute_js):
         """Prueba += con strings"""
         code = """
@@ -58,7 +58,7 @@ class TestCompoundAssignmentOperators:
         str;
         """
         assert execute_js(code) == "hello world"
-    
+
     def test_plus_equal_with_expression(self, execute_js):
         """Prueba += con expresión compleja"""
         code = """
@@ -68,7 +68,7 @@ class TestCompoundAssignmentOperators:
         x;
         """
         assert execute_js(code) == 11
-    
+
     def test_compound_assignment_with_array_element(self, execute_js):
         """Prueba += en elemento de array"""
         code = """
@@ -77,7 +77,7 @@ class TestCompoundAssignmentOperators:
         arr[0];
         """
         assert execute_js(code) == 11
-    
+
     def test_compound_assignment_with_object_property(self, execute_js):
         """Prueba += en propiedad de objeto"""
         code = """
@@ -86,7 +86,7 @@ class TestCompoundAssignmentOperators:
         obj.value;
         """
         assert execute_js(code) == 8
-    
+
     def test_multiple_compound_assignments(self, execute_js):
         """Prueba múltiples asignaciones compuestas seguidas"""
         code = """
@@ -97,7 +97,7 @@ class TestCompoundAssignmentOperators:
         x;
         """
         assert execute_js(code) == 24  # ((10 + 5) - 3) * 2 = 24
-    
+
     def test_compound_assignment_with_coercion(self, execute_js):
         """Prueba += con coerción de tipos"""
         code = """
@@ -106,7 +106,7 @@ class TestCompoundAssignmentOperators:
         x;
         """
         assert execute_js(code) == "510"
-    
+
     def test_compound_assignment_let(self, execute_js):
         """Prueba += con let"""
         code = """
@@ -115,7 +115,7 @@ class TestCompoundAssignmentOperators:
         x;
         """
         assert execute_js(code) == 9
-    
+
     def test_compound_assignment_const_raises(self, execute_js):
         """Prueba que += en const lanza error"""
         code = """
@@ -124,7 +124,7 @@ class TestCompoundAssignmentOperators:
         """
         with pytest.raises(RuntimeError, match="constant"):
             execute_js(code)
-    
+
     def test_compound_assignment_returns_value(self, execute_js):
         """Prueba que compound assignment devuelve el valor asignado"""
         code = """

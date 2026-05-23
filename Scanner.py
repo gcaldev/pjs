@@ -103,26 +103,26 @@ class Scanner(object):
             return
 
         if self._match("*"):
-                level = 1
-                while level > 0 and not self._is_at_end():
-                    if self._match("\n"):
-                        self.line += 1
-                        continue
-                    if self._match("*") and self._match("/"):
-                        level -= 1
-                        continue
-                    if self._match("/") and self._match("*"):
-                        level += 1
-                        continue
-                    self._advance()
-                if level > 0:
-                    raise Exception(f"Unterminated comment: `{self.lexeme()}`")
-                return
-            
+            level = 1
+            while level > 0 and not self._is_at_end():
+                if self._match("\n"):
+                    self.line += 1
+                    continue
+                if self._match("*") and self._match("/"):
+                    level -= 1
+                    continue
+                if self._match("/") and self._match("*"):
+                    level += 1
+                    continue
+                self._advance()
+            if level > 0:
+                raise Exception(f"Unterminated comment: `{self.lexeme()}`")
+            return
+
         if self._match("="):
             self.add_token(TokenType.SLASH_EQUAL)
             return
-        
+
         self.add_token(TokenType.SLASH)
 
     def _handle_string(self, delimiter: str):
