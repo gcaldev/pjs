@@ -8,23 +8,25 @@ Se recomienda el uso de [Black](https://marketplace.visualstudio.com/items?itemN
 black .
 ```
 
-## Scanner
+## Ejecución
 
-Componente encargado de tomar el texto ingresado y transformarlo a tokens correspondientes a un subset del lenguaje.
+- **Ejecutar interprete simple:**
+
+```sh
+python main.py
+```
+
+- **Ejecutar interprete multilínea:**
+
+```sh
+python main.py --multiline
+```
 
 - **Ejecutar tests:**
 
 ```sh
 python -m pytest -q
 ```
-
-- **Ejecutar scanner en modo interactivo:**
-
-```sh
-python main.py
-```
-
-Se pedirá una línea de código como entrada; el scanner devolverá los tokens reconocidos.
 
 ## Explicación de funcionalidades implementadas
 

@@ -2,15 +2,27 @@ from Resolver import Resolver
 from Scanner import Scanner
 from Parser import Parser
 from Interpreter import Interpreter
-from JSValues import js_repr, UNDEFINED
+import sys
+
+
+def read_source(multiline=False):
+    if multiline:
+        print("Enter source code:")
+        print("Windows: Ctrl+Z, Enter to end input")
+        print("Unix/Linux/Mac: Ctrl+D to end input")
+
+        return sys.stdin.read()
+
+    return input("Enter source code: ")
 
 
 def main():
-    source = input("Enter source code: ")
+    multiline = "--multiline" in sys.argv
+
+    source = read_source(multiline)
+
     scanner = Scanner(source)
     tokens = scanner.scan()
-    for token in tokens:
-        print(token)
 
     parser = Parser(tokens)
     expressions = parser.parse()
