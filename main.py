@@ -1,3 +1,4 @@
+import time
 from Resolver import Resolver
 from Scanner import Scanner
 from Parser import Parser
@@ -18,8 +19,13 @@ def read_source(multiline=False):
 
 def main():
     multiline = "--multiline" in sys.argv
+    use_timer = "--timer" in sys.argv
 
     source = read_source(multiline)
+    start_time = None
+
+    if use_timer:
+        start_time = time.perf_counter()
 
     scanner = Scanner(source)
     tokens = scanner.scan()
@@ -31,7 +37,15 @@ def main():
     for expr in expressions:
         resolver.resolve(expr)
     result = interpreter.interpret(expressions, as_js_repr=True)
+
+    if use_timer:
+        end_time = time.perf_counter()
+        elapsed_ms = (end_time - start_time) * 1000
+
     print(result)
+
+    if use_timer:
+        print(f"time = {elapsed_ms:.2f} ms")
 
 
 if __name__ == "__main__":

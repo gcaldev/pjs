@@ -28,6 +28,24 @@ python main.py --multiline
 python -m pytest -q
 ```
 
+- **Ejecutar interprete multilínea con timer:**
+
+```sh
+python main.py --multiline --timer
+```
+
+Para evaluar la performance de nuestra implementación comparándola con la implementación de JS corriendo node ejecutamos la función **fib(20)** medimos un tiempo de 1353.58 ms mientras que la ejecución en JS real tardo 1.34 ms (alrededor de 1000 veces menos).
+
+Esto es por el motivo que vimos en clase, al agregarle más capas de abstracción hasta ser traducido a código máquina notamos que la performance se ve afectada. Sumado a esto al haber implementado el intérprete sin compilación demora más.
+
+Si se desea comparar copiar la función fib y ejecutarla con los parámetros mencionados previamente y para correr la versión real en JS ejecutar el siguiente comando:
+
+```sh
+node language_performance.js
+```
+
+Además se adjunta el script con instrucciones representativas del lenguaje que puede ser copiado y enviado al intérprete con la opción multilínea **(language_script.js)**
+
 ## Explicación de funcionalidades implementadas
 
 Para el desarrollo de este interprete de JS construido en Python se usó como base la implementación plox vista en clase. Notar que la implementación de ciertas partes va a ser muy similar a lo visto en clase, a continuación, se especifican las funcionalidades diferenciales que tuvimos que implementar respecto a lo visto en clase para interpretar JS.
